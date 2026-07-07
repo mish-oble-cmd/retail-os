@@ -21,7 +21,7 @@ How Shopify is structured technically and organizationally — and which pattern
 └──────────────────────────────────────────────────────────────┘
 ```
 
-**Key insight:** Shopify is *channel-agnostic core commerce*. POS, web store, and marketplaces are all just **sales channels** writing to the same product/inventory/order/customer objects. This is the single most important architectural idea to copy.
+**Key insight:** Shopify is _channel-agnostic core commerce_. POS, web store, and marketplaces are all just **sales channels** writing to the same product/inventory/order/customer objects. This is the single most important architectural idea to copy.
 
 ## 2. Technical facts worth knowing
 
@@ -36,17 +36,17 @@ How Shopify is structured technically and organizationally — and which pattern
 
 ## 3. Core domain objects (Shopify's data model, simplified)
 
-| Object | Notes |
-|---|---|
-| Shop | Tenant root; everything hangs off it |
-| Product → Variant | Variants carry SKU, barcode, price; options (size/color) generate variants |
-| InventoryItem + InventoryLevel | Quantity is per (item × location) — enables multi-location |
-| Location | Physical/virtual stock location; POS registers bind to one |
-| Customer | Unified across channels; the omnichannel glue |
-| Order → LineItems, Transactions, Fulfillments, Refunds | Orders are append-only-ish; edits create adjustment records |
-| Discount / PriceRule | Codes + automatic discounts |
-| StaffMember + roles/PINs (POS) | Per-location permissions |
-| Session/Cart (POS) | Ephemeral until converted to Order |
+| Object                                                 | Notes                                                                      |
+| ------------------------------------------------------ | -------------------------------------------------------------------------- |
+| Shop                                                   | Tenant root; everything hangs off it                                       |
+| Product → Variant                                      | Variants carry SKU, barcode, price; options (size/color) generate variants |
+| InventoryItem + InventoryLevel                         | Quantity is per (item × location) — enables multi-location                 |
+| Location                                               | Physical/virtual stock location; POS registers bind to one                 |
+| Customer                                               | Unified across channels; the omnichannel glue                              |
+| Order → LineItems, Transactions, Fulfillments, Refunds | Orders are append-only-ish; edits create adjustment records                |
+| Discount / PriceRule                                   | Codes + automatic discounts                                                |
+| StaffMember + roles/PINs (POS)                         | Per-location permissions                                                   |
+| Session/Cart (POS)                                     | Ephemeral until converted to Order                                         |
 
 ## 4. Organizational lessons
 

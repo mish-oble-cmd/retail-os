@@ -3,6 +3,7 @@
 React Native (Expo) app for Android + iOS phones and small tablets. Ships in Phase 3. The "market stall / pop-up / queue-busting" register: camera scanning, BLE printing, pocketable.
 
 ## Product stance
+
 Full sell-path parity with desktop (sell, tenders, park, refunds, shifts, receipts); back-office tasks stay in admin (open in browser). Phone-portrait-first; tablet gets a two-pane layout later (Could).
 
 ## Navigation (portrait)
@@ -26,7 +27,9 @@ More:         stock lookup · settings/diagnostics · lock (PIN)
 - **OTA**: EAS Update for JS-layer fixes; store releases for native changes; update never interrupts an open cart
 
 ## Platform notes
+
 Android is the primary target (launch-market device reality — cheap tablets/phones); iOS must pass but optimizes second. Min: Android 8 / iOS 15. Test matrix includes a $120 Android tablet — if it's smooth there, it's smooth everywhere.
 
 ## Acceptance (Phase 3)
+
 Runs the Phase 1 demo script (minus desktop-only items) on both platforms + continuous-scan of 20 items in < 60s + BLE receipt print + full offline day then clean sync.

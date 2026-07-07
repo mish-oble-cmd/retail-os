@@ -12,11 +12,11 @@ How mockups are produced in this project (by Claude AI or a designer), reviewed,
 
 ## Canvas sizes
 
-| Target | Viewport |
-|---|---|
-| POS desktop/tablet landscape | 1280×800 |
-| POS mobile | 390×844 |
-| Admin web | 1440×900 (must degrade to 1024) |
+| Target                       | Viewport                        |
+| ---------------------------- | ------------------------------- |
+| POS desktop/tablet landscape | 1280×800                        |
+| POS mobile                   | 390×844                         |
+| Admin web                    | 1440×900 (must degrade to 1024) |
 
 ## Workflow (per screen)
 

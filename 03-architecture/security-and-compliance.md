@@ -4,19 +4,20 @@ Target bar: OWASP ASVS Level 2 (NFR-4). Money software earns trust or dies.
 
 ## Threat model (top risks, POS-specific)
 
-| Threat | Mitigation |
-|---|---|
-| Stolen/lost POS device with local data | Encrypted SQLite (SQLCipher / OS keystore), device tokens revocable from admin (kill switch → device wipes local DB on next contact and refuses PIN login when told), auto-lock, no card data ever stored |
-| Insider fraud (voids, fake refunds, sweethearting) | Role limits (FR-5.2), manager PIN escalation, immutable audit log (FR-5.3), over/short tracking per shift, anomaly reports (refund rate per staff) |
-| Tenant data leakage (multi-tenancy bug) | `store_id` enforced in ORM query wrapper (impossible to build an unscoped query without an explicit `dangerouslyCrossTenant` call), Postgres RLS as second layer, tenant-isolation tests in CI |
-| Credential stuffing on admin | Argon2id hashes, rate limiting + lockout, mandatory 2FA offer (mandatory for Owner role), breached-password check |
-| Webhook/API abuse | Scoped keys, HMAC signatures, rate limits, replay windows |
-| Sync forgery (fake sales injection) | Device tokens bound to register, batch signatures, server-side revalidation of all totals via domain package |
-| Supply-chain (npm) | Lockfiles, renovate + review, `pnpm audit` in CI, minimal dependency policy for `domain`/`sync` (near-zero deps) |
+| Threat                                             | Mitigation                                                                                                                                                                                                |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Stolen/lost POS device with local data             | Encrypted SQLite (SQLCipher / OS keystore), device tokens revocable from admin (kill switch → device wipes local DB on next contact and refuses PIN login when told), auto-lock, no card data ever stored |
+| Insider fraud (voids, fake refunds, sweethearting) | Role limits (FR-5.2), manager PIN escalation, immutable audit log (FR-5.3), over/short tracking per shift, anomaly reports (refund rate per staff)                                                        |
+| Tenant data leakage (multi-tenancy bug)            | `store_id` enforced in ORM query wrapper (impossible to build an unscoped query without an explicit `dangerouslyCrossTenant` call), Postgres RLS as second layer, tenant-isolation tests in CI            |
+| Credential stuffing on admin                       | Argon2id hashes, rate limiting + lockout, mandatory 2FA offer (mandatory for Owner role), breached-password check                                                                                         |
+| Webhook/API abuse                                  | Scoped keys, HMAC signatures, rate limits, replay windows                                                                                                                                                 |
+| Sync forgery (fake sales injection)                | Device tokens bound to register, batch signatures, server-side revalidation of all totals via domain package                                                                                              |
+| Supply-chain (npm)                                 | Lockfiles, renovate + review, `pnpm audit` in CI, minimal dependency policy for `domain`/`sync` (near-zero deps)                                                                                          |
 
 ## Payment card data (PCI DSS)
 
 **Design goal: SAQ-A-level scope.** We never see, transmit, or store PANs:
+
 - Integrated payments via processor SDKs/terminals (Stripe Terminal etc.) — card data flows device→processor
 - "Manual card" tender stores only last4 + reference typed by cashier (documented as non-sensitive reference, never full PAN — validation rejects >4 digits patterns)
 - No card data in logs, receipts show masked info only
@@ -45,8 +46,8 @@ Receipt/fiscal rules vary hard by country (e.g., Philippines BIR-accredited rece
 
 ## Compliance roadmap
 
-| When | Item |
-|---|---|
+| When    | Item                                                                           |
+| ------- | ------------------------------------------------------------------------------ |
 | Phase 1 | ASVS L2 self-assessment checklist in CI templates; tenant-isolation test suite |
-| Phase 4 | PCI SAQ-A attestation with processor integration |
-| Post-v1 | SOC 2 Type I → II when chasing chains/mid-market |
+| Phase 4 | PCI SAQ-A attestation with processor integration                               |
+| Post-v1 | SOC 2 Type I → II when chasing chains/mid-market                               |

@@ -33,12 +33,14 @@ Store ─┬─ Location ─┬─ Register ─── Shift ─── ShiftEvent
 ## Key tables (fields abridged to the load-bearing ones)
 
 ### Identity & topology
+
 - **Store**: name, currency, timezone, price_mode(`tax_inclusive|tax_exclusive`), plan, settings JSONB
 - **Location** ⬇: name, address, timezone, tax_profile_id, active
 - **Register** ⬇: location_id, name, device binding (activated sync_client_id), grid_layout JSONB
-- **Staff** ⬇: name, email?, pin_hash, role_id, active | **Role** ⬇: name, permissions JSONB (incl. `max_discount_pct`, `can_refund`, `can_void`, `can_open_drawer`, …)
+- **Staff** ⬇: name, email?, password_hash? (argon2id; back-office users only — register-only staff have PIN but no password; never synced down to POS devices), pin_hash, role_id, totp_secret? (encrypted; 2FA optional Phase 0, enforced for Owner from Phase 1), active | **Role** ⬇: name, permissions JSONB (incl. `max_discount_pct`, `can_refund`, `can_void`, `can_open_drawer`, …)
 
 ### Catalog ⬇
+
 - **Product**: name, description, category_id, brand, images[], tax_category_id, status, has_variants, custom JSONB
 - **Variant**: product_id, option_values JSONB, sku, price_amount, compare_at_amount?, cost_amount?, track_stock bool
 - **Barcode**: variant_id, code (unique per store) — multiple per variant
@@ -47,17 +49,20 @@ Store ─┬─ Location ─┬─ Register ─── Shift ─── ShiftEvent
 - **Promotion**: type (`pct|fixed|bogo`), scope (cart|category|product), conditions JSONB, schedule, stackable | **DiscountCode**: promotion_id, code, usage_limit
 
 ### Inventory
-- **InventoryLevel** ⬇: variant_id, location_id, on_hand, reserved (P4), reorder_point?, reorder_qty? — *projection of movements*
+
+- **InventoryLevel** ⬇: variant_id, location_id, on_hand, reserved (P4), reorder_point?, reorder_qty? — _projection of movements_
 - **StockMovement** ⬆(sales)/server(ops): variant_id, location_id, qty_delta, type(`sale|refund_restock|adjustment|receive|transfer_out|transfer_in|count`), reason?, ref (order_id/po_id/…), staff_id — **immutable ledger**
 - **Supplier / PurchaseOrder / POLine**: status(`draft|ordered|partial|received|closed`), expected_at; POLine: qty_ordered, qty_received, unit_cost_amount
 - **Transfer / TransferLine**: from/to location, status(`draft|in_transit|received|discrepancy`)
 - **CountSession / CountLine**: scope filters, status; line: expected, counted, variance
 
 ### Customers & loyalty
+
 - **Customer** ⬇⬆: name, phone (lookup key), email?, tags[], note, consent flags, custom JSONB
 - **LoyaltyAccount**: customer_id, points_balance | **LoyaltyTransaction**: delta, type(`earn|redeem|adjust`), order_id?
 
 ### Sales facts (all ⬆, immutable)
+
 - **Order**: register_id, location_id, staff_id, customer_id?, number (per-location sequence with register prefix, e.g. `R2-000481`, assigned locally — see sync doc), state(`completed|partially_paid|refunded|partially_refunded|voided`), subtotal/discount/tax/total amounts, tax_lines JSONB, note, source(`pos|api`), client_created_at, idempotency_key
 - **OrderLine**: variant_id? (null = custom sale), name snapshot, qty (×1000 for weight later), unit_price_amount snapshot, line discounts JSONB, tax JSONB, cost_snapshot_amount (margin reporting)
 - **Payment**: order_id, tender_type, amount, change_amount (cash), provider ref/status (card), captured_at
@@ -65,6 +70,7 @@ Store ─┬─ Location ─┬─ Register ─── Shift ─── ShiftEvent
 - **Shift**: register_id, staff_open/close, opened_at/closed_at, float_amount, counted_amount, expected_amount, over_short_amount | **ShiftEvent**: type(`paid_in|paid_out|no_sale|drop`), amount, reason
 
 ### Platform
+
 - **ApiKey**: hashed key, scopes[], last_used | **WebhookSubscription**: url, topics[], secret | **WebhookDelivery**: payload, attempts, status
 - **SyncClient**: device fingerprint, register_id, last_seen, last_ack_rev | **SyncBatch**: client_id, idempotency_key, payload hash, status | **SyncConflict**: type, entities, resolution, resolved_by
 - **AuditLog**: actor, action, entity ref, before/after JSONB (sensitive actions only)
@@ -81,3 +87,12 @@ Store ─┬─ Location ─┬─ Register ─── Shift ─── ShiftEvent
 ## Tax computation (locked decision)
 
 Per-line: rate applied to discounted line amount, rounded half-up to minor unit; order tax = Σ line taxes; tax-inclusive mode extracts tax from gross (`tax = gross - gross/(1+rate)`, rounded). Multi-rate lines supported via tax_lines array. Implemented once in `@retailos/domain/tax.ts`, golden-tested (see testing strategy).
+
+Phase 0 clarifications (approved 2026-07-08):
+
+- Rates are stored/computed as **integer basis points** (12% = 1200 bp); all tax math is integer-only (`round_half_up(amount × rate_bp / 10000)`), no floats anywhere.
+- "Half-up" = round half **away from zero** (negative amounts, e.g. refunds, mirror positive rounding).
+- **Multi-rate exclusive**: each rate applies independently to the discounted line amount, each rounded half-up.
+- **Multi-rate inclusive**: net = gross / (1 + Σrates); each `tax_i = round_half_up(gross × rate_i_bp / (10000 + Σrate_bp))`. Any residual cent between `gross - net - Σtax_i` stays in net (never invented tax).
+- **Cart-level discounts** are allocated across lines proportionally to line amounts (largest-remainder method so no cent is lost) _before_ tax computes — tax always sees discounted line amounts.
+- **Canonical demo tax setup**: PHP currency, 12% VAT tax-inclusive (Philippines launch market); golden fixtures center on this plus exclusive/multi-rate/zero-rate cases.

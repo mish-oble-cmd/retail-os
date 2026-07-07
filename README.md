@@ -13,16 +13,16 @@ A complete documentation codebase for building a Shopify-inspired **Point of Sal
 
 ## Repository map
 
-| Folder | Purpose |
-|---|---|
-| `01-research/` | Shopify study: business model, architecture, features, strengths/weaknesses |
-| `02-product/` | What WE are building: vision, personas, requirements (PRD) |
-| `03-architecture/` | System design: tech stack, data model, APIs, offline sync, security |
-| `04-design/` | Design system, screen inventory, mockup specifications |
-| `05-roadmap/` | Development phases, milestones, acceptance criteria |
-| `06-apps/` | Per-app specifications: web admin, desktop POS, mobile POS |
-| `07-development/` | Monorepo structure, coding standards, testing, deployment |
-| `08-prompts/` | Ready-to-paste Claude AI prompt templates per phase |
+| Folder             | Purpose                                                                     |
+| ------------------ | --------------------------------------------------------------------------- |
+| `01-research/`     | Shopify study: business model, architecture, features, strengths/weaknesses |
+| `02-product/`      | What WE are building: vision, personas, requirements (PRD)                  |
+| `03-architecture/` | System design: tech stack, data model, APIs, offline sync, security         |
+| `04-design/`       | Design system, screen inventory, mockup specifications                      |
+| `05-roadmap/`      | Development phases, milestones, acceptance criteria                         |
+| `06-apps/`         | Per-app specifications: web admin, desktop POS, mobile POS                  |
+| `07-development/`  | Monorepo structure, coding standards, testing, deployment                   |
+| `08-prompts/`      | Ready-to-paste Claude AI prompt templates per phase                         |
 
 ## Reading order (first time)
 

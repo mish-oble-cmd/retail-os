@@ -9,35 +9,58 @@ Confident, calm, fast. A tool for busy people in bright, noisy shops: **high con
 ## Tokens
 
 ### Color
-| Token | Value | Use |
-|---|---|---|
-| `--color-primary` | `#1A4D2E` (deep green) | Actions, focus, brand |
-| `--color-primary-hover` | `#143D24` | |
-| `--color-accent` | `#F5A623` (amber) | Highlights, pending states |
-| `--color-success` | `#1E8E3E` | Paid, synced, positive |
-| `--color-warning` | `#F29900` | Offline, low stock, pending sync |
-| `--color-danger` | `#D93025` | Refunds, voids, destructive |
-| `--color-bg` | `#F7F8F7` | App background |
-| `--color-surface` | `#FFFFFF` | Cards, sheets |
-| `--color-ink` | `#1C1F1D` | Primary text |
-| `--color-ink-muted` | `#5C6660` | Secondary text |
-| `--color-border` | `#E2E6E3` | |
+
+| Token                   | Value                  | Use                              |
+| ----------------------- | ---------------------- | -------------------------------- |
+| `--color-primary`       | `#1A4D2E` (deep green) | Actions, focus, brand            |
+| `--color-primary-hover` | `#143D24`              |                                  |
+| `--color-accent`        | `#F5A623` (amber)      | Highlights, pending states       |
+| `--color-success`       | `#1E8E3E`              | Paid, synced, positive           |
+| `--color-warning`       | `#F29900`              | Offline, low stock, pending sync |
+| `--color-danger`        | `#D93025`              | Refunds, voids, destructive      |
+| `--color-bg`            | `#F7F8F7`              | App background                   |
+| `--color-surface`       | `#FFFFFF`              | Cards, sheets                    |
+| `--color-ink`           | `#1C1F1D`              | Primary text                     |
+| `--color-ink-muted`     | `#5C6660`              | Secondary text                   |
+| `--color-border`        | `#E2E6E3`              |                                  |
+
 Dark mode: defined as parallel token set from Phase 0 (POS night shifts); admin dark mode Phase 5.
 
+Dark token set (proposed Phase 0, approved 2026-07-08 — revisit against real POS screens in Phase 1):
+
+| Token                   | Dark value | Notes                                                  |
+| ----------------------- | ---------- | ------------------------------------------------------ |
+| `--color-primary`       | `#5CB584`  | Primary must lighten on dark to hold 4.5:1 on surfaces |
+| `--color-primary-hover` | `#6FC494`  |                                                        |
+| `--color-accent`        | `#F5B84D`  |                                                        |
+| `--color-success`       | `#4CC272`  |                                                        |
+| `--color-warning`       | `#F5A623`  |                                                        |
+| `--color-danger`        | `#F0655A`  |                                                        |
+| `--color-bg`            | `#121513`  | Green-tinted near-black, matches brand ink             |
+| `--color-surface`       | `#1C201D`  |                                                        |
+| `--color-ink`           | `#E8ECE9`  |                                                        |
+| `--color-ink-muted`     | `#98A29C`  |                                                        |
+| `--color-border`        | `#2B302D`  |                                                        |
+
+Rule: components consume tokens only; dark mode is `[data-theme="dark"]` swapping the CSS variable values — zero per-component dark styles.
+
 ### Typography
+
 - Family: **Inter** (UI), **JetBrains Mono** (amounts in tables/receipt preview — tabular numbers mandatory for money: `font-variant-numeric: tabular-nums`)
 - Scale (px): 12 caption · 14 body-sm · 16 body (admin default) · 18 POS body · 20 h3 · 24 h2 · 30 h1 · 40 POS total display
 - Weights: 400/500/600 only
 
 ### Spacing & shape
+
 - 4px base grid; component paddings from {8, 12, 16, 24, 32}
 - Radius: 8px default, 12px cards, full for pills
 - Shadows: 2 elevations only (card, overlay)
 
 ### Touch & density modes
+
 - `density="pos"`: min target 48×48px, body 18px, generous spacing — registers
 - `density="admin"`: 36px controls, 14–16px text, dense tables — back office
-Same components, density via context provider.
+  Same components, density via context provider.
 
 ## Core components (build order in Phase 0)
 

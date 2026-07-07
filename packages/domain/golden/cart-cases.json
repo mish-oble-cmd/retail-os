@@ -1,0 +1,1147 @@
+{
+  "description": "Golden cart cases (discounts, allocation, totals). Same provenance and review rules as tax-cases.json.",
+  "cases": [
+    {
+      "name": "two lines, inclusive VAT12, no discounts",
+      "input": {
+        "currency": "PHP",
+        "priceMode": "tax_inclusive",
+        "lines": [
+          {
+            "id": "l1",
+            "unitPriceAmount": 49900,
+            "qty": 2,
+            "taxRates": [
+              {
+                "id": "ph-vat-12",
+                "rateBp": 1200
+              }
+            ]
+          },
+          {
+            "id": "l2",
+            "unitPriceAmount": 12500,
+            "qty": 1,
+            "taxRates": [
+              {
+                "id": "ph-vat-12",
+                "rateBp": 1200
+              }
+            ]
+          }
+        ]
+      },
+      "expected": {
+        "currency": "PHP",
+        "priceMode": "tax_inclusive",
+        "lines": [
+          {
+            "id": "l1",
+            "grossAmount": 99800,
+            "lineDiscountAmount": 0,
+            "cartDiscountAmount": 0,
+            "netAmount": 99800,
+            "taxLines": [
+              {
+                "rateId": "ph-vat-12",
+                "rateBp": 1200,
+                "amount": 10693
+              }
+            ],
+            "taxAmount": 10693,
+            "totalAmount": 99800
+          },
+          {
+            "id": "l2",
+            "grossAmount": 12500,
+            "lineDiscountAmount": 0,
+            "cartDiscountAmount": 0,
+            "netAmount": 12500,
+            "taxLines": [
+              {
+                "rateId": "ph-vat-12",
+                "rateBp": 1200,
+                "amount": 1339
+              }
+            ],
+            "taxAmount": 1339,
+            "totalAmount": 12500
+          }
+        ],
+        "subtotalAmount": 112300,
+        "discountAmount": 0,
+        "taxAmount": 12032,
+        "totalAmount": 112300
+      }
+    },
+    {
+      "name": "two lines, exclusive 12%, no discounts",
+      "input": {
+        "currency": "PHP",
+        "priceMode": "tax_exclusive",
+        "lines": [
+          {
+            "id": "l1",
+            "unitPriceAmount": 49900,
+            "qty": 2,
+            "taxRates": [
+              {
+                "id": "ph-vat-12",
+                "rateBp": 1200
+              }
+            ]
+          },
+          {
+            "id": "l2",
+            "unitPriceAmount": 12500,
+            "qty": 1,
+            "taxRates": [
+              {
+                "id": "ph-vat-12",
+                "rateBp": 1200
+              }
+            ]
+          }
+        ]
+      },
+      "expected": {
+        "currency": "PHP",
+        "priceMode": "tax_exclusive",
+        "lines": [
+          {
+            "id": "l1",
+            "grossAmount": 99800,
+            "lineDiscountAmount": 0,
+            "cartDiscountAmount": 0,
+            "netAmount": 99800,
+            "taxLines": [
+              {
+                "rateId": "ph-vat-12",
+                "rateBp": 1200,
+                "amount": 11976
+              }
+            ],
+            "taxAmount": 11976,
+            "totalAmount": 111776
+          },
+          {
+            "id": "l2",
+            "grossAmount": 12500,
+            "lineDiscountAmount": 0,
+            "cartDiscountAmount": 0,
+            "netAmount": 12500,
+            "taxLines": [
+              {
+                "rateId": "ph-vat-12",
+                "rateBp": 1200,
+                "amount": 1500
+              }
+            ],
+            "taxAmount": 1500,
+            "totalAmount": 14000
+          }
+        ],
+        "subtotalAmount": 112300,
+        "discountAmount": 0,
+        "taxAmount": 13476,
+        "totalAmount": 125776
+      }
+    },
+    {
+      "name": "line percent discount 10%, inclusive",
+      "input": {
+        "currency": "PHP",
+        "priceMode": "tax_inclusive",
+        "lines": [
+          {
+            "id": "l1",
+            "unitPriceAmount": 25000,
+            "qty": 1,
+            "taxRates": [
+              {
+                "id": "ph-vat-12",
+                "rateBp": 1200
+              }
+            ],
+            "discounts": [
+              {
+                "type": "percent",
+                "value": 1000
+              }
+            ]
+          }
+        ]
+      },
+      "expected": {
+        "currency": "PHP",
+        "priceMode": "tax_inclusive",
+        "lines": [
+          {
+            "id": "l1",
+            "grossAmount": 25000,
+            "lineDiscountAmount": 2500,
+            "cartDiscountAmount": 0,
+            "netAmount": 22500,
+            "taxLines": [
+              {
+                "rateId": "ph-vat-12",
+                "rateBp": 1200,
+                "amount": 2411
+              }
+            ],
+            "taxAmount": 2411,
+            "totalAmount": 22500
+          }
+        ],
+        "subtotalAmount": 25000,
+        "discountAmount": 2500,
+        "taxAmount": 2411,
+        "totalAmount": 22500
+      }
+    },
+    {
+      "name": "line fixed discount 5.00, inclusive",
+      "input": {
+        "currency": "PHP",
+        "priceMode": "tax_inclusive",
+        "lines": [
+          {
+            "id": "l1",
+            "unitPriceAmount": 25000,
+            "qty": 1,
+            "taxRates": [
+              {
+                "id": "ph-vat-12",
+                "rateBp": 1200
+              }
+            ],
+            "discounts": [
+              {
+                "type": "fixed",
+                "value": 500
+              }
+            ]
+          }
+        ]
+      },
+      "expected": {
+        "currency": "PHP",
+        "priceMode": "tax_inclusive",
+        "lines": [
+          {
+            "id": "l1",
+            "grossAmount": 25000,
+            "lineDiscountAmount": 500,
+            "cartDiscountAmount": 0,
+            "netAmount": 24500,
+            "taxLines": [
+              {
+                "rateId": "ph-vat-12",
+                "rateBp": 1200,
+                "amount": 2625
+              }
+            ],
+            "taxAmount": 2625,
+            "totalAmount": 24500
+          }
+        ],
+        "subtotalAmount": 25000,
+        "discountAmount": 500,
+        "taxAmount": 2625,
+        "totalAmount": 24500
+      }
+    },
+    {
+      "name": "stacked line discounts: 10% then fixed 2.00",
+      "input": {
+        "currency": "PHP",
+        "priceMode": "tax_inclusive",
+        "lines": [
+          {
+            "id": "l1",
+            "unitPriceAmount": 19900,
+            "qty": 3,
+            "taxRates": [
+              {
+                "id": "ph-vat-12",
+                "rateBp": 1200
+              }
+            ],
+            "discounts": [
+              {
+                "type": "percent",
+                "value": 1000
+              },
+              {
+                "type": "fixed",
+                "value": 200
+              }
+            ]
+          }
+        ]
+      },
+      "expected": {
+        "currency": "PHP",
+        "priceMode": "tax_inclusive",
+        "lines": [
+          {
+            "id": "l1",
+            "grossAmount": 59700,
+            "lineDiscountAmount": 6170,
+            "cartDiscountAmount": 0,
+            "netAmount": 53530,
+            "taxLines": [
+              {
+                "rateId": "ph-vat-12",
+                "rateBp": 1200,
+                "amount": 5735
+              }
+            ],
+            "taxAmount": 5735,
+            "totalAmount": 53530
+          }
+        ],
+        "subtotalAmount": 59700,
+        "discountAmount": 6170,
+        "taxAmount": 5735,
+        "totalAmount": 53530
+      }
+    },
+    {
+      "name": "fixed line discount larger than line clamps to zero",
+      "input": {
+        "currency": "PHP",
+        "priceMode": "tax_inclusive",
+        "lines": [
+          {
+            "id": "l1",
+            "unitPriceAmount": 500,
+            "qty": 1,
+            "taxRates": [
+              {
+                "id": "ph-vat-12",
+                "rateBp": 1200
+              }
+            ],
+            "discounts": [
+              {
+                "type": "fixed",
+                "value": 99900
+              }
+            ]
+          }
+        ]
+      },
+      "expected": {
+        "currency": "PHP",
+        "priceMode": "tax_inclusive",
+        "lines": [
+          {
+            "id": "l1",
+            "grossAmount": 500,
+            "lineDiscountAmount": 500,
+            "cartDiscountAmount": 0,
+            "netAmount": 0,
+            "taxLines": [
+              {
+                "rateId": "ph-vat-12",
+                "rateBp": 1200,
+                "amount": 0
+              }
+            ],
+            "taxAmount": 0,
+            "totalAmount": 0
+          }
+        ],
+        "subtotalAmount": 500,
+        "discountAmount": 500,
+        "taxAmount": 0,
+        "totalAmount": 0
+      }
+    },
+    {
+      "name": "cart 10% across uneven lines, inclusive",
+      "input": {
+        "currency": "PHP",
+        "priceMode": "tax_inclusive",
+        "lines": [
+          {
+            "id": "l1",
+            "unitPriceAmount": 33300,
+            "qty": 1,
+            "taxRates": [
+              {
+                "id": "ph-vat-12",
+                "rateBp": 1200
+              }
+            ]
+          },
+          {
+            "id": "l2",
+            "unitPriceAmount": 66700,
+            "qty": 1,
+            "taxRates": [
+              {
+                "id": "ph-vat-12",
+                "rateBp": 1200
+              }
+            ]
+          }
+        ],
+        "discounts": [
+          {
+            "type": "percent",
+            "value": 1000
+          }
+        ]
+      },
+      "expected": {
+        "currency": "PHP",
+        "priceMode": "tax_inclusive",
+        "lines": [
+          {
+            "id": "l1",
+            "grossAmount": 33300,
+            "lineDiscountAmount": 0,
+            "cartDiscountAmount": 3330,
+            "netAmount": 29970,
+            "taxLines": [
+              {
+                "rateId": "ph-vat-12",
+                "rateBp": 1200,
+                "amount": 3211
+              }
+            ],
+            "taxAmount": 3211,
+            "totalAmount": 29970
+          },
+          {
+            "id": "l2",
+            "grossAmount": 66700,
+            "lineDiscountAmount": 0,
+            "cartDiscountAmount": 6670,
+            "netAmount": 60030,
+            "taxLines": [
+              {
+                "rateId": "ph-vat-12",
+                "rateBp": 1200,
+                "amount": 6432
+              }
+            ],
+            "taxAmount": 6432,
+            "totalAmount": 60030
+          }
+        ],
+        "subtotalAmount": 100000,
+        "discountAmount": 10000,
+        "taxAmount": 9643,
+        "totalAmount": 90000
+      }
+    },
+    {
+      "name": "cart fixed 1.00 over three equal lines (largest-remainder tie -> first line)",
+      "input": {
+        "currency": "PHP",
+        "priceMode": "tax_inclusive",
+        "lines": [
+          {
+            "id": "l1",
+            "unitPriceAmount": 1000,
+            "qty": 1,
+            "taxRates": [
+              {
+                "id": "ph-vat-12",
+                "rateBp": 1200
+              }
+            ]
+          },
+          {
+            "id": "l2",
+            "unitPriceAmount": 1000,
+            "qty": 1,
+            "taxRates": [
+              {
+                "id": "ph-vat-12",
+                "rateBp": 1200
+              }
+            ]
+          },
+          {
+            "id": "l3",
+            "unitPriceAmount": 1000,
+            "qty": 1,
+            "taxRates": [
+              {
+                "id": "ph-vat-12",
+                "rateBp": 1200
+              }
+            ]
+          }
+        ],
+        "discounts": [
+          {
+            "type": "fixed",
+            "value": 100
+          }
+        ]
+      },
+      "expected": {
+        "currency": "PHP",
+        "priceMode": "tax_inclusive",
+        "lines": [
+          {
+            "id": "l1",
+            "grossAmount": 1000,
+            "lineDiscountAmount": 0,
+            "cartDiscountAmount": 34,
+            "netAmount": 966,
+            "taxLines": [
+              {
+                "rateId": "ph-vat-12",
+                "rateBp": 1200,
+                "amount": 104
+              }
+            ],
+            "taxAmount": 104,
+            "totalAmount": 966
+          },
+          {
+            "id": "l2",
+            "grossAmount": 1000,
+            "lineDiscountAmount": 0,
+            "cartDiscountAmount": 33,
+            "netAmount": 967,
+            "taxLines": [
+              {
+                "rateId": "ph-vat-12",
+                "rateBp": 1200,
+                "amount": 104
+              }
+            ],
+            "taxAmount": 104,
+            "totalAmount": 967
+          },
+          {
+            "id": "l3",
+            "grossAmount": 1000,
+            "lineDiscountAmount": 0,
+            "cartDiscountAmount": 33,
+            "netAmount": 967,
+            "taxLines": [
+              {
+                "rateId": "ph-vat-12",
+                "rateBp": 1200,
+                "amount": 104
+              }
+            ],
+            "taxAmount": 104,
+            "totalAmount": 967
+          }
+        ],
+        "subtotalAmount": 3000,
+        "discountAmount": 100,
+        "taxAmount": 312,
+        "totalAmount": 2900
+      }
+    },
+    {
+      "name": "cart fixed discount with uneven allocation (no lost cents)",
+      "input": {
+        "currency": "PHP",
+        "priceMode": "tax_exclusive",
+        "lines": [
+          {
+            "id": "l1",
+            "unitPriceAmount": 9999,
+            "qty": 1,
+            "taxRates": [
+              {
+                "id": "ph-vat-12",
+                "rateBp": 1200
+              }
+            ]
+          },
+          {
+            "id": "l2",
+            "unitPriceAmount": 4999,
+            "qty": 1,
+            "taxRates": [
+              {
+                "id": "ph-vat-12",
+                "rateBp": 1200
+              }
+            ]
+          },
+          {
+            "id": "l3",
+            "unitPriceAmount": 1999,
+            "qty": 1,
+            "taxRates": [
+              {
+                "id": "ph-vat-12",
+                "rateBp": 1200
+              }
+            ]
+          }
+        ],
+        "discounts": [
+          {
+            "type": "fixed",
+            "value": 2500
+          }
+        ]
+      },
+      "expected": {
+        "currency": "PHP",
+        "priceMode": "tax_exclusive",
+        "lines": [
+          {
+            "id": "l1",
+            "grossAmount": 9999,
+            "lineDiscountAmount": 0,
+            "cartDiscountAmount": 1471,
+            "netAmount": 8528,
+            "taxLines": [
+              {
+                "rateId": "ph-vat-12",
+                "rateBp": 1200,
+                "amount": 1023
+              }
+            ],
+            "taxAmount": 1023,
+            "totalAmount": 9551
+          },
+          {
+            "id": "l2",
+            "grossAmount": 4999,
+            "lineDiscountAmount": 0,
+            "cartDiscountAmount": 735,
+            "netAmount": 4264,
+            "taxLines": [
+              {
+                "rateId": "ph-vat-12",
+                "rateBp": 1200,
+                "amount": 512
+              }
+            ],
+            "taxAmount": 512,
+            "totalAmount": 4776
+          },
+          {
+            "id": "l3",
+            "grossAmount": 1999,
+            "lineDiscountAmount": 0,
+            "cartDiscountAmount": 294,
+            "netAmount": 1705,
+            "taxLines": [
+              {
+                "rateId": "ph-vat-12",
+                "rateBp": 1200,
+                "amount": 205
+              }
+            ],
+            "taxAmount": 205,
+            "totalAmount": 1910
+          }
+        ],
+        "subtotalAmount": 16997,
+        "discountAmount": 2500,
+        "taxAmount": 1740,
+        "totalAmount": 16237
+      }
+    },
+    {
+      "name": "100% cart discount zeroes everything",
+      "input": {
+        "currency": "PHP",
+        "priceMode": "tax_inclusive",
+        "lines": [
+          {
+            "id": "l1",
+            "unitPriceAmount": 49900,
+            "qty": 1,
+            "taxRates": [
+              {
+                "id": "ph-vat-12",
+                "rateBp": 1200
+              }
+            ]
+          },
+          {
+            "id": "l2",
+            "unitPriceAmount": 100,
+            "qty": 3,
+            "taxRates": [
+              {
+                "id": "ph-vat-12",
+                "rateBp": 1200
+              }
+            ]
+          }
+        ],
+        "discounts": [
+          {
+            "type": "percent",
+            "value": 10000
+          }
+        ]
+      },
+      "expected": {
+        "currency": "PHP",
+        "priceMode": "tax_inclusive",
+        "lines": [
+          {
+            "id": "l1",
+            "grossAmount": 49900,
+            "lineDiscountAmount": 0,
+            "cartDiscountAmount": 49900,
+            "netAmount": 0,
+            "taxLines": [
+              {
+                "rateId": "ph-vat-12",
+                "rateBp": 1200,
+                "amount": 0
+              }
+            ],
+            "taxAmount": 0,
+            "totalAmount": 0
+          },
+          {
+            "id": "l2",
+            "grossAmount": 300,
+            "lineDiscountAmount": 0,
+            "cartDiscountAmount": 300,
+            "netAmount": 0,
+            "taxLines": [
+              {
+                "rateId": "ph-vat-12",
+                "rateBp": 1200,
+                "amount": 0
+              }
+            ],
+            "taxAmount": 0,
+            "totalAmount": 0
+          }
+        ],
+        "subtotalAmount": 50200,
+        "discountAmount": 50200,
+        "taxAmount": 0,
+        "totalAmount": 0
+      }
+    },
+    {
+      "name": "tax computes on discounted amount, not gross (inclusive)",
+      "input": {
+        "currency": "PHP",
+        "priceMode": "tax_inclusive",
+        "lines": [
+          {
+            "id": "l1",
+            "unitPriceAmount": 11200,
+            "qty": 1,
+            "taxRates": [
+              {
+                "id": "ph-vat-12",
+                "rateBp": 1200
+              }
+            ],
+            "discounts": [
+              {
+                "type": "percent",
+                "value": 5000
+              }
+            ]
+          }
+        ]
+      },
+      "expected": {
+        "currency": "PHP",
+        "priceMode": "tax_inclusive",
+        "lines": [
+          {
+            "id": "l1",
+            "grossAmount": 11200,
+            "lineDiscountAmount": 5600,
+            "cartDiscountAmount": 0,
+            "netAmount": 5600,
+            "taxLines": [
+              {
+                "rateId": "ph-vat-12",
+                "rateBp": 1200,
+                "amount": 600
+              }
+            ],
+            "taxAmount": 600,
+            "totalAmount": 5600
+          }
+        ],
+        "subtotalAmount": 11200,
+        "discountAmount": 5600,
+        "taxAmount": 600,
+        "totalAmount": 5600
+      }
+    },
+    {
+      "name": "exclusive multi-rate with line discount",
+      "input": {
+        "currency": "PHP",
+        "priceMode": "tax_exclusive",
+        "lines": [
+          {
+            "id": "l1",
+            "unitPriceAmount": 10000,
+            "qty": 1,
+            "taxRates": [
+              {
+                "id": "ph-vat-12",
+                "rateBp": 1200
+              },
+              {
+                "id": "svc-3",
+                "rateBp": 300
+              }
+            ],
+            "discounts": [
+              {
+                "type": "percent",
+                "value": 2000
+              }
+            ]
+          }
+        ]
+      },
+      "expected": {
+        "currency": "PHP",
+        "priceMode": "tax_exclusive",
+        "lines": [
+          {
+            "id": "l1",
+            "grossAmount": 10000,
+            "lineDiscountAmount": 2000,
+            "cartDiscountAmount": 0,
+            "netAmount": 8000,
+            "taxLines": [
+              {
+                "rateId": "ph-vat-12",
+                "rateBp": 1200,
+                "amount": 960
+              },
+              {
+                "rateId": "svc-3",
+                "rateBp": 300,
+                "amount": 240
+              }
+            ],
+            "taxAmount": 1200,
+            "totalAmount": 9200
+          }
+        ],
+        "subtotalAmount": 10000,
+        "discountAmount": 2000,
+        "taxAmount": 1200,
+        "totalAmount": 9200
+      }
+    },
+    {
+      "name": "qty 7 with line percent 15%",
+      "input": {
+        "currency": "PHP",
+        "priceMode": "tax_inclusive",
+        "lines": [
+          {
+            "id": "l1",
+            "unitPriceAmount": 8950,
+            "qty": 7,
+            "taxRates": [
+              {
+                "id": "ph-vat-12",
+                "rateBp": 1200
+              }
+            ],
+            "discounts": [
+              {
+                "type": "percent",
+                "value": 1500
+              }
+            ]
+          }
+        ]
+      },
+      "expected": {
+        "currency": "PHP",
+        "priceMode": "tax_inclusive",
+        "lines": [
+          {
+            "id": "l1",
+            "grossAmount": 62650,
+            "lineDiscountAmount": 9398,
+            "cartDiscountAmount": 0,
+            "netAmount": 53252,
+            "taxLines": [
+              {
+                "rateId": "ph-vat-12",
+                "rateBp": 1200,
+                "amount": 5706
+              }
+            ],
+            "taxAmount": 5706,
+            "totalAmount": 53252
+          }
+        ],
+        "subtotalAmount": 62650,
+        "discountAmount": 9398,
+        "taxAmount": 5706,
+        "totalAmount": 53252
+      }
+    },
+    {
+      "name": "empty cart",
+      "input": {
+        "currency": "PHP",
+        "priceMode": "tax_inclusive",
+        "lines": []
+      },
+      "expected": {
+        "currency": "PHP",
+        "priceMode": "tax_inclusive",
+        "lines": [],
+        "subtotalAmount": 0,
+        "discountAmount": 0,
+        "taxAmount": 0,
+        "totalAmount": 0
+      }
+    },
+    {
+      "name": "zero-price freebie line",
+      "input": {
+        "currency": "PHP",
+        "priceMode": "tax_inclusive",
+        "lines": [
+          {
+            "id": "l1",
+            "unitPriceAmount": 0,
+            "qty": 1,
+            "taxRates": [
+              {
+                "id": "ph-vat-12",
+                "rateBp": 1200
+              }
+            ]
+          },
+          {
+            "id": "l2",
+            "unitPriceAmount": 5600,
+            "qty": 1,
+            "taxRates": [
+              {
+                "id": "ph-vat-12",
+                "rateBp": 1200
+              }
+            ]
+          }
+        ]
+      },
+      "expected": {
+        "currency": "PHP",
+        "priceMode": "tax_inclusive",
+        "lines": [
+          {
+            "id": "l1",
+            "grossAmount": 0,
+            "lineDiscountAmount": 0,
+            "cartDiscountAmount": 0,
+            "netAmount": 0,
+            "taxLines": [
+              {
+                "rateId": "ph-vat-12",
+                "rateBp": 1200,
+                "amount": 0
+              }
+            ],
+            "taxAmount": 0,
+            "totalAmount": 0
+          },
+          {
+            "id": "l2",
+            "grossAmount": 5600,
+            "lineDiscountAmount": 0,
+            "cartDiscountAmount": 0,
+            "netAmount": 5600,
+            "taxLines": [
+              {
+                "rateId": "ph-vat-12",
+                "rateBp": 1200,
+                "amount": 600
+              }
+            ],
+            "taxAmount": 600,
+            "totalAmount": 5600
+          }
+        ],
+        "subtotalAmount": 5600,
+        "discountAmount": 0,
+        "taxAmount": 600,
+        "totalAmount": 5600
+      }
+    },
+    {
+      "name": "custom sale line without tax rates",
+      "input": {
+        "currency": "PHP",
+        "priceMode": "tax_inclusive",
+        "lines": [
+          {
+            "id": "l1",
+            "unitPriceAmount": 15000,
+            "qty": 1
+          }
+        ]
+      },
+      "expected": {
+        "currency": "PHP",
+        "priceMode": "tax_inclusive",
+        "lines": [
+          {
+            "id": "l1",
+            "grossAmount": 15000,
+            "lineDiscountAmount": 0,
+            "cartDiscountAmount": 0,
+            "netAmount": 15000,
+            "taxLines": [],
+            "taxAmount": 0,
+            "totalAmount": 15000
+          }
+        ],
+        "subtotalAmount": 15000,
+        "discountAmount": 0,
+        "taxAmount": 0,
+        "totalAmount": 15000
+      }
+    },
+    {
+      "name": "large amounts: 1M pesos scale, inclusive",
+      "input": {
+        "currency": "PHP",
+        "priceMode": "tax_inclusive",
+        "lines": [
+          {
+            "id": "l1",
+            "unitPriceAmount": 100000000,
+            "qty": 1,
+            "taxRates": [
+              {
+                "id": "ph-vat-12",
+                "rateBp": 1200
+              }
+            ]
+          },
+          {
+            "id": "l2",
+            "unitPriceAmount": 4999999,
+            "qty": 2,
+            "taxRates": [
+              {
+                "id": "ph-vat-12",
+                "rateBp": 1200
+              }
+            ]
+          }
+        ]
+      },
+      "expected": {
+        "currency": "PHP",
+        "priceMode": "tax_inclusive",
+        "lines": [
+          {
+            "id": "l1",
+            "grossAmount": 100000000,
+            "lineDiscountAmount": 0,
+            "cartDiscountAmount": 0,
+            "netAmount": 100000000,
+            "taxLines": [
+              {
+                "rateId": "ph-vat-12",
+                "rateBp": 1200,
+                "amount": 10714286
+              }
+            ],
+            "taxAmount": 10714286,
+            "totalAmount": 100000000
+          },
+          {
+            "id": "l2",
+            "grossAmount": 9999998,
+            "lineDiscountAmount": 0,
+            "cartDiscountAmount": 0,
+            "netAmount": 9999998,
+            "taxLines": [
+              {
+                "rateId": "ph-vat-12",
+                "rateBp": 1200,
+                "amount": 1071428
+              }
+            ],
+            "taxAmount": 1071428,
+            "totalAmount": 9999998
+          }
+        ],
+        "subtotalAmount": 109999998,
+        "discountAmount": 0,
+        "taxAmount": 11785714,
+        "totalAmount": 109999998
+      }
+    },
+    {
+      "name": "one-centavo line with 50% discount (0.5 rounds away from zero)",
+      "input": {
+        "currency": "PHP",
+        "priceMode": "tax_inclusive",
+        "lines": [
+          {
+            "id": "l1",
+            "unitPriceAmount": 1,
+            "qty": 1,
+            "taxRates": [
+              {
+                "id": "ph-vat-12",
+                "rateBp": 1200
+              }
+            ],
+            "discounts": [
+              {
+                "type": "percent",
+                "value": 5000
+              }
+            ]
+          }
+        ]
+      },
+      "expected": {
+        "currency": "PHP",
+        "priceMode": "tax_inclusive",
+        "lines": [
+          {
+            "id": "l1",
+            "grossAmount": 1,
+            "lineDiscountAmount": 1,
+            "cartDiscountAmount": 0,
+            "netAmount": 0,
+            "taxLines": [
+              {
+                "rateId": "ph-vat-12",
+                "rateBp": 1200,
+                "amount": 0
+              }
+            ],
+            "taxAmount": 0,
+            "totalAmount": 0
+          }
+        ],
+        "subtotalAmount": 1,
+        "discountAmount": 1,
+        "taxAmount": 0,
+        "totalAmount": 0
+      }
+    }
+  ]
+}

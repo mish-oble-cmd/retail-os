@@ -11,12 +11,12 @@ Copy-paste starters for driving each stage of the project with Claude (Claude Co
 
 ## Templates in this folder
 
-| File | Use when |
-|---|---|
-| `phase-kickoff.md` | Starting any phase |
-| `mockup-request.md` | Producing/revising a screen mockup |
+| File                        | Use when                                       |
+| --------------------------- | ---------------------------------------------- |
+| `phase-kickoff.md`          | Starting any phase                             |
+| `mockup-request.md`         | Producing/revising a screen mockup             |
 | `feature-implementation.md` | Building one workstream/feature inside a phase |
-| `review-and-hardening.md` | Phase exit: tests, security, docs sync |
+| `review-and-hardening.md`   | Phase exit: tests, security, docs sync         |
 
 ## Session hygiene tips
 

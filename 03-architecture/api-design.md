@@ -15,12 +15,12 @@ REST, OpenAPI-first (spec is written before handlers; `@retailos/api-client` is 
 
 ## Auth
 
-| Client | Mechanism |
-|---|---|
-| Admin web | Session cookie (httpOnly) from email+password+TOTP |
-| POS devices | Device token (from activation) + staff PIN context header `X-Staff-Id` (server logs attribution; authorization enforced against role) |
-| Public API | `Authorization: Bearer rok_...` API keys with scopes (`read_orders`, `write_products`, …) |
-| Webhooks (outbound) | `X-RetailOS-Signature: hmac-sha256=...` over raw body, per-subscription secret |
+| Client              | Mechanism                                                                                                                             |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Admin web           | Session cookie (httpOnly) from email+password+TOTP                                                                                    |
+| POS devices         | Device token (from activation) + staff PIN context header `X-Staff-Id` (server logs attribution; authorization enforced against role) |
+| Public API          | `Authorization: Bearer rok_...` API keys with scopes (`read_orders`, `write_products`, …)                                             |
+| Webhooks (outbound) | `X-RetailOS-Signature: hmac-sha256=...` over raw body, per-subscription secret                                                        |
 
 ## Resource map (v1)
 
@@ -55,6 +55,7 @@ REST, OpenAPI-first (spec is written before handlers; `@retailos/api-client` is 
 ## Representative payloads
 
 ### POST /sync/batches (POS → server)
+
 ```json
 {
   "batch_id": "01J8ZQ3F9K7...",
@@ -63,33 +64,57 @@ REST, OpenAPI-first (spec is written before handlers; `@retailos/api-client` is 
     {
       "type": "order.completed",
       "order": {
-        "id": "01J8ZQ4A...", "number": "R2-000481",
-        "staff_id": "01J8...", "customer_id": null,
+        "id": "01J8ZQ4A...",
+        "number": "R2-000481",
+        "staff_id": "01J8...",
+        "customer_id": null,
         "lines": [
-          { "id": "01J8...", "variant_id": "01J8...", "name": "T-Shirt / M / Black",
-            "qty": 2, "unit_price": { "amount": 49900, "currency": "PHP" },
-            "discounts": [], "tax_lines": [{ "rate_id": "vat12", "amount": 10693 }] }
+          {
+            "id": "01J8...",
+            "variant_id": "01J8...",
+            "name": "T-Shirt / M / Black",
+            "qty": 2,
+            "unit_price": { "amount": 49900, "currency": "PHP" },
+            "discounts": [],
+            "tax_lines": [{ "rate_id": "vat12", "amount": 10693 }]
+          }
         ],
         "totals": { "subtotal": 99800, "discount": 0, "tax": 10693, "total": 99800 },
-        "payments": [ { "id": "01J8...", "tender": "cash", "amount": 100000, "change": 200 } ],
-        "client_created_at": "2026-07-08T03:21:44Z", "local_seq": 481
+        "payments": [{ "id": "01J8...", "tender": "cash", "amount": 100000, "change": 200 }],
+        "client_created_at": "2026-07-08T03:21:44Z",
+        "local_seq": 481
       }
     },
-    { "type": "stock.movement", "movement": { "id": "01J8...", "variant_id": "01J8...",
-        "location_id": "01J8...", "qty_delta": -2, "movement_type": "sale", "ref_order_id": "01J8ZQ4A..." } }
+    {
+      "type": "stock.movement",
+      "movement": {
+        "id": "01J8...",
+        "variant_id": "01J8...",
+        "location_id": "01J8...",
+        "qty_delta": -2,
+        "movement_type": "sale",
+        "ref_order_id": "01J8ZQ4A..."
+      }
+    }
   ]
 }
 ```
+
 Response: per-fact ack `{ id, status: "accepted" | "duplicate" | "accepted_with_conflict", conflict?: {...} }`.
 
 ### Webhook delivery
+
 ```json
 {
-  "id": "01J8...", "topic": "order.created", "store_id": "01J8...",
-  "occurred_at": "2026-07-08T03:21:50Z", "api_version": "v1",
-  "data": { "order": { /* full order resource */ } }
+  "id": "01J8...",
+  "topic": "order.created",
+  "store_id": "01J8...",
+  "occurred_at": "2026-07-08T03:21:50Z",
+  "api_version": "v1",
+  "data": { "order": {/* full order resource */} }
 }
 ```
+
 Delivery: POST, 10s timeout, retries 8× exponential (≈ 24h), auto-disable subscription after sustained failure + email alert. Consumers must dedupe by `id`.
 
 ## Internal-only endpoints

@@ -5,6 +5,7 @@ Inventory of Shopify's feature surface, weighted toward POS. Used as the checkli
 ## 1. POS features (Shopify POS Lite vs Pro)
 
 ### Selling / checkout
+
 - Product search, barcode scan, browse by collection; smart grid (customizable tile layout)
 - Cart: line items, quantity, per-line and cart-level discounts (% / fixed / code)
 - Custom sale (ad-hoc item with price typed in)
@@ -16,28 +17,34 @@ Inventory of Shopify's feature surface, weighted toward POS. Used as the checkli
 - Order history lookup from register
 
 ### Customers
+
 - Attach customer to sale; create/edit at register
 - Purchase history visible at POS; notes, tags
 - Loyalty via apps (not native — gap)
 
 ### Staff (Pro)
+
 - PIN login per staff member; role-based permissions (discount limits, refund rights, register access)
 - Sales attribution per staff member
 
 ### Inventory (Pro)
+
 - Multi-location stock; stock lookup at other locations from register
 - Stock counts/cycle counts, receiving, purchase orders, transfers
 - Low-stock alerts (basic)
 
 ### Register operations
+
 - Cash tracking sessions: float, paid in/out, end-of-day count, discrepancy report (Pro)
 - Daily sales summary / Z-report equivalent
 - Offline: **cash-only degraded mode**; card payments and many features fail offline (major gap)
 
 ### Hardware
+
 - Proprietary + certified readers (WisePad, POS Go, countertop kit), receipt printers, barcode scanners, cash drawers
 
 ### Omnichannel (Pro)
+
 - Buy online pickup in store (BOPIS), ship-to-customer from register, buy in store/ship to home, local delivery
 - Unified customer + order history across channels
 
@@ -60,18 +67,18 @@ Inventory of Shopify's feature surface, weighted toward POS. Used as the checkli
 
 ## 4. Feature-tier map (what's paywalled where)
 
-| Capability | Free/Lite | Pro/Paid tier |
-|---|---|---|
-| Basic selling, cash/card | ✔ | ✔ |
-| Receipts (print/email) | ✔ | ✔ |
-| Staff PINs & roles | ✖ | ✔ |
-| Exchanges | ✖ | ✔ |
-| Purchase orders, counts | ✖ | ✔ |
-| BOPIS / omnichannel fulfillment | ✖ | ✔ |
-| Cash session discrepancy reports | ✖ | ✔ |
-| Custom printed receipts | ✖ | ✔ |
+| Capability                       | Free/Lite | Pro/Paid tier |
+| -------------------------------- | --------- | ------------- |
+| Basic selling, cash/card         | ✔         | ✔             |
+| Receipts (print/email)           | ✔         | ✔             |
+| Staff PINs & roles               | ✖         | ✔             |
+| Exchanges                        | ✖         | ✔             |
+| Purchase orders, counts          | ✖         | ✔             |
+| BOPIS / omnichannel fulfillment  | ✖         | ✔             |
+| Cash session discrepancy reports | ✖         | ✔             |
+| Custom printed receipts          | ✖         | ✔             |
 
-**Lesson:** the free tier sells; the paid tier *operates a real store* (staff, inventory ops, cash controls, omnichannel). We mirror this split in our pricing (see `02-product/vision-and-strategy.md`).
+**Lesson:** the free tier sells; the paid tier _operates a real store_ (staff, inventory ops, cash controls, omnichannel). We mirror this split in our pricing (see `02-product/vision-and-strategy.md`).
 
 ## 5. Notable native gaps (opportunities)
 

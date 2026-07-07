@@ -5,30 +5,38 @@
 **FRs:** FR-1.1–1.8, FR-1.9 (queue level), FR-2.1–2.2 (basic), FR-3.1 (sales ledger), FR-5.1 (PIN), FR-6.1–6.2, FR-10.1, FR-10.2 (core settings), manual card tender.
 
 ## Mockup gate (before implementation)
+
 POS-01, 02, 05, 06, 07, 08, 10, 12, 13, 14 · ADM-01, 03, 04, 05, 11, 16, 17 (POS-03/04 already approved in Phase 0).
 
 ## Workstreams
 
 ### 1A Catalog (admin + API)
+
 Product/variant CRUD with options matrix, barcodes, images (S3 upload), categories; products list with search; per-location stock field (single location for now). Register grid-layout editor (ADM-16).
 
 ### 1B POS data layer
-SQLite schema on device (catalog mirror + facts tables); bootstrap download; delta pull (catalog/settings/staff); outbox + pusher v1 (`/sync/bootstrap`, `/sync/changes`, `/sync/batches` minimal happy path + idempotent replay). *The full conflict matrix is Phase 3, but idempotency and atomic outbox writes are NOT deferrable.*
+
+SQLite schema on device (catalog mirror + facts tables); bootstrap download; delta pull (catalog/settings/staff); outbox + pusher v1 (`/sync/bootstrap`, `/sync/changes`, `/sync/batches` minimal happy path + idempotent replay). _The full conflict matrix is Phase 3, but idempotency and atomic outbox writes are NOT deferrable._
 
 ### 1C Sell flow (pos-web + Electron)
+
 Sell screen per approved mockup: grid, search, barcode wedge focus-trap; cart ops; discounts sheet (permission ceiling hardcoded to role later); custom sale; park/retrieve; payment screen: cash w/ change + quick amounts, manual card (ref + last4), split tender; receipt: ESC/POS print + email + QR; refunds against local/synced orders; register orders list.
 
 ### 1D Shifts & cash
+
 Open/close with counts, paid in/out, over/short, Z-summary printable.
 
 ### 1E Onboarding
+
 Signup wizard (store, currency, tax rate, location+register auto-created), sample catalog import offer, activation-code flow for the register, "first sale" checklist on empty dashboard. **Measure: fresh signup → first sale < 15 min.**
 
 ### 1F Staff PIN
+
 Staff CRUD (admin), PIN hash sync, PIN lock + attribution on every order (roles/permissions deepen in Phase 2 — Phase 1 roles: Owner/Cashier fixed).
 
 ## Acceptance criteria (demo script)
-- [ ] Create store, add 20 products via UI + 200 via CSV template (basic import) 
+
+- [ ] Create store, add 20 products via UI + 200 via CSV template (basic import)
 - [ ] Activate desktop register with code; cashier PIN login
 - [ ] Sell: scan 3 items, apply 10% line discount, park, retrieve, cash payment, correct change, printed + email receipt with tax breakdown
 - [ ] Split tender sale (cash + manual card)
@@ -39,4 +47,5 @@ Staff CRUD (admin), PIN hash sync, PIN lock + attribution on every order (roles/
 - [ ] Signup-to-first-sale timed run < 15 min
 
 ## Out of scope (resist!)
+
 Customers, loyalty, promotions engine (only manual discounts), PO/counts/transfers, reports beyond daily summary, mobile app, integrated card terminals, multi-location.

@@ -1,0 +1,21 @@
+{
+  "name": "retailos",
+  "private": true,
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md,html,css}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,json,md,html,css}\""
+  },
+  "devDependencies": {
+    "@retailos/config": "workspace:*",
+    "prettier": "^3.4.2",
+    "turbo": "^2.3.4"
+  }
+}

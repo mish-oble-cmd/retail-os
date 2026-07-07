@@ -26,12 +26,12 @@ Primary launch geography: markets with expensive/unreliable connectivity and cas
 
 ## Business model
 
-| Tier | Price (indicative) | Includes |
-|---|---|---|
-| **Free** | $0 | 1 location, 1 register, 2 staff, full selling + basic reports, community support |
-| **Standard** | ~$29/mo/location | Unlimited registers, staff roles/PINs, full inventory ops (PO, counts, transfers), all reports, loyalty |
-| **Growth** | ~$69/mo/location | Multi-location transfers/analytics, API + webhooks, priority support, advanced promotions |
-| Long-term | Payments take rate | Integrated payments (Stripe/Adyen/local acquirers) once volume justifies — Shopify's real lesson |
+| Tier         | Price (indicative) | Includes                                                                                                |
+| ------------ | ------------------ | ------------------------------------------------------------------------------------------------------- |
+| **Free**     | $0                 | 1 location, 1 register, 2 staff, full selling + basic reports, community support                        |
+| **Standard** | ~$29/mo/location   | Unlimited registers, staff roles/PINs, full inventory ops (PO, counts, transfers), all reports, loyalty |
+| **Growth**   | ~$69/mo/location   | Multi-location transfers/analytics, API + webhooks, priority support, advanced promotions               |
+| Long-term    | Payments take rate | Integrated payments (Stripe/Adyen/local acquirers) once volume justifies — Shopify's real lesson        |
 
 Revenue philosophy: subscriptions fund the business now; payments become the flywheel later. Never penalize external processors (differentiator vs Shopify).
 

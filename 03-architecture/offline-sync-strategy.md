@@ -11,13 +11,13 @@ The core differentiator (attacks Shopify weaknesses W1/W5). Read alongside `data
 
 ## What syncs which way
 
-| Data | Direction | Notes |
-|---|---|---|
-| Catalog, prices, promotions, taxes, tenders, staff/roles, settings, register layout | ⬇ down | Delta feed by `sync_rev` |
-| Inventory levels | ⬇ down (display only) | Client shows last-known; never blocks a sale |
-| Customers | ⬇⬆ both | Field-level merge, server wins on conflict except notes append |
-| Orders, payments, refunds, stock movements, shifts, loyalty earn | ⬆ up | Immutable facts, batched |
-| Loyalty redemption | ⬆ up with cap | See conflict rules #4 |
+| Data                                                                                | Direction             | Notes                                                          |
+| ----------------------------------------------------------------------------------- | --------------------- | -------------------------------------------------------------- |
+| Catalog, prices, promotions, taxes, tenders, staff/roles, settings, register layout | ⬇ down                | Delta feed by `sync_rev`                                       |
+| Inventory levels                                                                    | ⬇ down (display only) | Client shows last-known; never blocks a sale                   |
+| Customers                                                                           | ⬇⬆ both               | Field-level merge, server wins on conflict except notes append |
+| Orders, payments, refunds, stock movements, shifts, loyalty earn                    | ⬆ up                  | Immutable facts, batched                                       |
+| Loyalty redemption                                                                  | ⬆ up with cap         | See conflict rules #4                                          |
 
 ## Client anatomy (`@retailos/sync`)
 
@@ -44,16 +44,16 @@ POST /sync/batches
 
 ## Conflict resolution rules
 
-| # | Scenario | Resolution |
-|---|---|---|
-| 1 | Price changed while register offline; sale used stale price | Accept sale at charged price (it's reality). Log conflict `stale_price` with delta for the admin report |
-| 2 | Two registers sell the last unit → negative stock | Allow (FR-3.7). Level goes negative; flagged in low-stock/negative report |
-| 3 | Same customer edited on two devices | Field-level merge by latest timestamp; `note` fields append-merge; conflict logged |
-| 4 | Loyalty points redeemed offline beyond live balance | Offline redemption capped at (last-synced balance − configurable safety margin, default 20%). Overshoot on reconcile → balance floors at 0 + conflict logged |
-| 5 | Staff member deactivated while device offline | Sales made before delta applied stay valid + audit-flagged; device locks that PIN on delta apply |
-| 6 | Order number collision | Impossible by construction: number = `<register prefix>-<local sequence>`; global uniqueness via ULID; display number is per-register |
-| 7 | Refund created offline against an order that was refunded elsewhere | Second refund exceeding refundable amount → recorded as `over_refund` conflict, surfaced to manager for cash-drawer correction; not silently dropped |
-| 8 | Clock skew | Client sends `client_created_at` + monotonic sequence; server stamps `received_at`; ordering within a register uses the local sequence, cross-register ordering uses server time |
+| #   | Scenario                                                            | Resolution                                                                                                                                                                       |
+| --- | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Price changed while register offline; sale used stale price         | Accept sale at charged price (it's reality). Log conflict `stale_price` with delta for the admin report                                                                          |
+| 2   | Two registers sell the last unit → negative stock                   | Allow (FR-3.7). Level goes negative; flagged in low-stock/negative report                                                                                                        |
+| 3   | Same customer edited on two devices                                 | Field-level merge by latest timestamp; `note` fields append-merge; conflict logged                                                                                               |
+| 4   | Loyalty points redeemed offline beyond live balance                 | Offline redemption capped at (last-synced balance − configurable safety margin, default 20%). Overshoot on reconcile → balance floors at 0 + conflict logged                     |
+| 5   | Staff member deactivated while device offline                       | Sales made before delta applied stay valid + audit-flagged; device locks that PIN on delta apply                                                                                 |
+| 6   | Order number collision                                              | Impossible by construction: number = `<register prefix>-<local sequence>`; global uniqueness via ULID; display number is per-register                                            |
+| 7   | Refund created offline against an order that was refunded elsewhere | Second refund exceeding refundable amount → recorded as `over_refund` conflict, surfaced to manager for cash-drawer correction; not silently dropped                             |
+| 8   | Clock skew                                                          | Client sends `client_created_at` + monotonic sequence; server stamps `received_at`; ordering within a register uses the local sequence, cross-register ordering uses server time |
 
 ## Offline duration & storage budget
 

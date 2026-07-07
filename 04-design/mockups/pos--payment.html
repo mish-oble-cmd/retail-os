@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>POS-04 Payment — RetailOS mockup</title>
+<style>
+  /* ===== Counter design tokens — keep in sync with 04-design/design-system.md ===== */
+  :root {
+    --color-primary: #1A4D2E;
+    --color-primary-hover: #143D24;
+    --color-accent: #F5A623;
+    --color-success: #1E8E3E;
+    --color-warning: #F29900;
+    --color-danger: #D93025;
+    --color-bg: #F7F8F7;
+    --color-surface: #FFFFFF;
+    --color-ink: #1C1F1D;
+    --color-ink-muted: #5C6660;
+    --color-border: #E2E6E3;
+    --radius: 8px;
+    --radius-card: 12px;
+    --shadow-card: 0 1px 3px rgba(28, 31, 29, 0.10);
+    --shadow-overlay: 0 8px 24px rgba(28, 31, 29, 0.18);
+    --font-ui: "Inter", system-ui, -apple-system, sans-serif;
+    --font-money: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  }
+  [data-theme="dark"] {
+    --color-primary: #5CB584; --color-primary-hover: #6FC494; --color-accent: #F5B84D;
+    --color-success: #4CC272; --color-warning: #F5A623; --color-danger: #F0655A;
+    --color-bg: #121513; --color-surface: #1C201D; --color-ink: #E8ECE9;
+    --color-ink-muted: #98A29C; --color-border: #2B302D;
+  }
+
+  * { box-sizing: border-box; margin: 0; }
+  body { background: #DDE1DE; font-family: var(--font-ui); color: var(--color-ink); padding: 24px; }
+  .money { font-family: var(--font-money); font-variant-numeric: tabular-nums; text-align: right; }
+
+  .canvas-label { max-width: 1280px; margin: 32px auto 8px; font-size: 14px; color: #444; }
+  .canvas { width: 1280px; height: 800px; margin: 0 auto; background: var(--color-bg);
+    border-radius: 4px; overflow: hidden; display: flex; flex-direction: column; box-shadow: var(--shadow-overlay); }
+
+  .topbar { height: 56px; background: var(--color-surface); border-bottom: 1px solid var(--color-border);
+    display: flex; align-items: center; gap: 16px; padding: 0 16px; flex: none; }
+  .back { height: 48px; padding: 0 16px; border: 1px solid var(--color-border); border-radius: var(--radius);
+    background: var(--color-surface); font-size: 16px; font-family: var(--font-ui); color: var(--color-ink); }
+  .crumb { font-size: 18px; font-weight: 600; }
+  .crumb small { display: block; font-size: 12px; color: var(--color-ink-muted); font-weight: 400; }
+  .sync-pill { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 14px;
+    padding: 8px 14px; border-radius: 999px; font-weight: 500; }
+  .sync-pill .dot { width: 10px; height: 10px; border-radius: 999px; }
+  .sync-ok { background: #E7F3EA; color: var(--color-success); } .sync-ok .dot { background: var(--color-success); }
+  .sync-off { background: #FDF3E3; color: #9A6200; } .sync-off .dot { background: var(--color-warning); }
+
+  .main { flex: 1; display: flex; min-height: 0; }
+
+  /* ===== Left: due / tenders / split rows ===== */
+  .pay-left { flex: 1; padding: 24px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .due-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card); padding: 20px 24px; }
+  .due-card .label { font-size: 16px; color: var(--color-ink-muted); }
+  .due-amount { font-size: 40px; font-weight: 600; margin-top: 4px; text-align: left; }
+  .due-sub { font-size: 14px; color: var(--color-ink-muted); margin-top: 4px; }
+
+  .tenders { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .tender { height: 72px; border-radius: var(--radius-card); border: 1px solid var(--color-border);
+    background: var(--color-surface); font-family: var(--font-ui); font-size: 18px; font-weight: 500;
+    color: var(--color-ink); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+  .tender small { font-size: 12px; color: var(--color-ink-muted); font-weight: 400; }
+  .tender.active { border: 2px solid var(--color-primary); background: #EDF4EF; }
+
+  .split { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card); overflow: hidden; }
+  .split .row { display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+    border-bottom: 1px solid var(--color-border); font-size: 18px; }
+  .split .row:last-child { border-bottom: 0; }
+  .split .who { font-weight: 500; }
+  .split .meta { font-size: 14px; color: var(--color-ink-muted); }
+  .split .amt { margin-left: auto; font-size: 18px; font-weight: 500; }
+  .split .remove { width: 48px; height: 48px; border: 1px solid var(--color-border); border-radius: var(--radius);
+    background: var(--color-surface); color: var(--color-danger); font-size: 18px; }
+  .split .head { background: var(--color-bg); font-size: 14px; color: var(--color-ink-muted); padding: 8px 16px; }
+
+  .change-strip { margin-top: auto; background: #E7F3EA; border: 1px solid #BFE0C8; border-radius: var(--radius-card);
+    padding: 16px 24px; display: flex; align-items: baseline; justify-content: space-between; }
+  .change-strip .label { font-size: 18px; font-weight: 500; color: var(--color-success); }
+  .change-strip .amt { font-size: 40px; font-weight: 600; color: var(--color-success); }
+
+  /* ===== Right: numberpad panel ===== */
+  .pay-right { width: 420px; flex: none; background: var(--color-surface); border-left: 1px solid var(--color-border);
+    display: flex; flex-direction: column; padding: 24px; gap: 12px; }
+  .entry-label { font-size: 16px; color: var(--color-ink-muted); }
+  .entry { height: 72px; border: 2px solid var(--color-primary); border-radius: var(--radius);
+    display: flex; align-items: center; justify-content: flex-end; padding: 0 16px; font-size: 32px; font-weight: 600;
+    box-shadow: 0 0 0 3px rgba(26, 77, 46, 0.15); }
+  .chips { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .chip { height: 48px; border-radius: 999px; border: 1px solid var(--color-border); background: var(--color-bg);
+    font-family: var(--font-money); font-variant-numeric: tabular-nums; font-size: 16px; color: var(--color-ink); }
+  .pad { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .key { border-radius: var(--radius-card); border: 1px solid var(--color-border); background: var(--color-bg);
+    font-family: var(--font-ui); font-size: 24px; font-weight: 500; color: var(--color-ink); min-height: 64px; }
+  .key:active { background: var(--color-border); }
+  .tender-btn { height: 64px; border: 0; border-radius: var(--radius-card); background: var(--color-primary);
+    color: #fff; font-family: var(--font-ui); font-size: 20px; font-weight: 600; }
+  .tender-btn:hover { background: var(--color-primary-hover); }
+
+  .field-error { border-color: var(--color-danger) !important; box-shadow: 0 0 0 3px rgba(217, 48, 37, 0.15) !important; }
+  .error-text { color: var(--color-danger); font-size: 14px; }
+  .ref-input { height: 52px; border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface);
+    display: flex; align-items: center; padding: 0 14px; font-size: 18px; }
+
+  .note { max-width: 1280px; margin: 8px auto 0; font-size: 13px; color: #555; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     SECTION 1 — Primary state: cash tender, change due
+     (NumberPad is live — minimal vanilla JS to demo the entry flow)
+============================================================ -->
+<p class="canvas-label"><strong>POS-04 Payment — primary state</strong> (cash · ₱2,000 tendered on ₱1,250.00 → change ₱750.00 · pad is interactive)</p>
+<div class="canvas">
+  <div class="topbar">
+    <button class="back">← Back to sale</button>
+    <div class="crumb">Payment<small>Sale R2-000482 · 8 items</small></div>
+    <div class="sync-pill sync-ok"><span class="dot"></span>Synced · just now</div>
+  </div>
+  <div class="main">
+    <div class="pay-left">
+      <div class="due-card">
+        <div class="label">Amount due</div>
+        <div class="due-amount money" style="text-align:left">₱1,250.00</div>
+        <div class="due-sub">Subtotal ₱1,250.00 · VAT 12% included ₱133.93</div>
+      </div>
+      <div class="tenders">
+        <button class="tender active">Cash</button>
+        <button class="tender">Card<small>manual ref</small></button>
+        <button class="tender">GCash</button>
+        <button class="tender">Bank transfer</button>
+      </div>
+      <div class="split">
+        <div class="head">Payments on this sale</div>
+        <div class="row">
+          <span class="who">Cash</span><span class="meta">tendered ₱2,000.00</span>
+          <span class="amt money" id="split-cash">₱1,250.00</span>
+          <button class="remove" title="Remove payment">✕</button>
+        </div>
+      </div>
+      <div class="change-strip">
+        <span class="label">Change due</span>
+        <span class="amt money" id="change">₱750.00</span>
+      </div>
+    </div>
+    <div class="pay-right">
+      <div class="entry-label">Cash received</div>
+      <div class="entry money" id="entry">₱2,000.00</div>
+      <div class="chips">
+        <button class="chip" data-amt="125000">₱1,250</button>
+        <button class="chip" data-amt="130000">₱1,300</button>
+        <button class="chip" data-amt="150000">₱1,500</button>
+        <button class="chip" data-amt="200000">₱2,000</button>
+      </div>
+      <div class="pad">
+        <button class="key" data-k="1">1</button><button class="key" data-k="2">2</button><button class="key" data-k="3">3</button>
+        <button class="key" data-k="4">4</button><button class="key" data-k="5">5</button><button class="key" data-k="6">6</button>
+        <button class="key" data-k="7">7</button><button class="key" data-k="8">8</button><button class="key" data-k="9">9</button>
+        <button class="key" data-k="00">00</button><button class="key" data-k="0">0</button><button class="key" data-k="back">⌫</button>
+      </div>
+      <button class="tender-btn" id="complete">Complete sale — change ₱750.00</button>
+    </div>
+  </div>
+</div>
+<p class="note">Primary action states the outcome (“change ₱750.00”), not “OK”. Quick-amount chips cover the common PH denominations handed over. Removing a payment is styled danger and lives in the split list, away from the primary button. Everything here works with zero network — payment facts queue locally (FR-1.9).</p>
+
+<!-- ============================================================
+     SECTION 2 — Non-happy state: split payment mid-flow + offline
+     + manual-card reference validation (PCI: never a full PAN)
+============================================================ -->
+<p class="canvas-label"><strong>POS-04 Payment — split payment, offline, validation error</strong> (GCash ₱1,000 recorded · card ref rejected · ₱250.00 remaining)</p>
+<div class="canvas">
+  <div class="topbar">
+    <button class="back">← Back to sale</button>
+    <div class="crumb">Payment<small>Sale R2-000483 · 3 items</small></div>
+    <div class="sync-pill sync-off"><span class="dot"></span>Offline · 4 sales queued</div>
+  </div>
+  <div class="main">
+    <div class="pay-left">
+      <div class="due-card">
+        <div class="label">Remaining</div>
+        <div class="due-amount money" style="text-align:left">₱250.00</div>
+        <div class="due-sub">of ₱1,250.00 total · 1 payment recorded</div>
+      </div>
+      <div class="tenders">
+        <button class="tender">Cash</button>
+        <button class="tender active">Card<small>manual ref</small></button>
+        <button class="tender">GCash</button>
+        <button class="tender">Bank transfer</button>
+      </div>
+      <div class="split">
+        <div class="head">Payments on this sale</div>
+        <div class="row">
+          <span class="who">GCash</span><span class="meta">ref 7031-XXXX · 14:22</span>
+          <span class="amt money">₱1,000.00</span>
+          <button class="remove" title="Remove payment">✕</button>
+        </div>
+        <div class="row" style="color: var(--color-ink-muted)">
+          <span class="who" style="font-weight:400">Card (manual)</span><span class="meta">entering…</span>
+          <span class="amt money">₱250.00</span>
+        </div>
+      </div>
+      <div class="change-strip" style="background:#FDF3E3;border-color:#F2DDB4">
+        <span class="label" style="color:#9A6200">Still to collect</span>
+        <span class="amt money" style="color:#9A6200">₱250.00</span>
+      </div>
+    </div>
+    <div class="pay-right">
+      <div class="entry-label">Card amount</div>
+      <div class="entry money">₱250.00</div>
+      <div class="entry-label" style="margin-top:4px">Reference — last 4 digits only</div>
+      <div class="ref-input field-error money" style="justify-content:flex-start">4539 8801 2345 6721</div>
+      <div class="error-text">Enter the last 4 digits only — full card numbers are never stored. Use the terminal slip’s reference.</div>
+      <div class="pad" style="flex:1">
+        <button class="key">1</button><button class="key">2</button><button class="key">3</button>
+        <button class="key">4</button><button class="key">5</button><button class="key">6</button>
+        <button class="key">7</button><button class="key">8</button><button class="key">9</button>
+        <button class="key">00</button><button class="key">0</button><button class="key">⌫</button>
+      </div>
+      <button class="tender-btn" style="opacity:.45">Record card payment ₱250.00</button>
+    </div>
+  </div>
+</div>
+<p class="note">Split payments accumulate as rows (FR-1.5); the amber strip mirrors the change strip so “what happens next” always lives bottom-left. Manual card entry rejects PAN-length input at the field (security-and-compliance.md §PCI): the error says what to do next. Offline pill persists through payment — recording tenders is a local fact.</p>
+
+<script>
+  // Minimal demo of the NumberPad interaction (mockup-guidelines.md allows this).
+  // All amounts are integer minor units, mirroring @retailos/domain.
+  (function () {
+    var DUE = 125000;
+    var amount = 200000;
+    var entry = document.getElementById("entry");
+    var change = document.getElementById("change");
+    var splitCash = document.getElementById("split-cash");
+    var complete = document.getElementById("complete");
+    function peso(minor) {
+      var neg = minor < 0 ? "-" : "";
+      var abs = Math.abs(minor);
+      var whole = Math.floor(abs / 100).toLocaleString("en-PH");
+      var cents = String(abs % 100).padStart(2, "0");
+      return neg + "₱" + whole + "." + cents;
+    }
+    function render() {
+      entry.textContent = peso(amount);
+      var over = amount - DUE;
+      change.textContent = peso(Math.max(0, over));
+      splitCash.textContent = peso(Math.min(amount, DUE));
+      complete.textContent = over >= 0
+        ? "Complete sale — change " + peso(over)
+        : "Short by " + peso(-over);
+      complete.style.opacity = over >= 0 ? "1" : ".45";
+    }
+    document.querySelectorAll(".key[data-k]").forEach(function (k) {
+      k.addEventListener("click", function () {
+        var v = k.getAttribute("data-k");
+        if (v === "back") amount = Math.floor(amount / 10);
+        else if (v === "00") amount = amount * 100;
+        else amount = amount * 10 + Number(v);
+        if (amount > 99999999) amount = 99999999; // entry cap for the demo
+        render();
+      });
+    });
+    document.querySelectorAll(".chip[data-amt]").forEach(function (c) {
+      c.addEventListener("click", function () {
+        amount = Number(c.getAttribute("data-amt"));
+        render();
+      });
+    });
+    render();
+  })();
+</script>
+</body>
+</html>

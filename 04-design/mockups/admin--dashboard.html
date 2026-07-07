@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>ADM-02 Dashboard — RetailOS mockup</title>
+<style>
+  /* ===== Counter design tokens — keep in sync with 04-design/design-system.md ===== */
+  :root {
+    --color-primary: #1A4D2E;
+    --color-primary-hover: #143D24;
+    --color-accent: #F5A623;
+    --color-success: #1E8E3E;
+    --color-warning: #F29900;
+    --color-danger: #D93025;
+    --color-bg: #F7F8F7;
+    --color-surface: #FFFFFF;
+    --color-ink: #1C1F1D;
+    --color-ink-muted: #5C6660;
+    --color-border: #E2E6E3;
+    --radius: 8px;
+    --radius-card: 12px;
+    --shadow-card: 0 1px 3px rgba(28, 31, 29, 0.10);
+    --shadow-overlay: 0 8px 24px rgba(28, 31, 29, 0.18);
+    --font-ui: "Inter", system-ui, -apple-system, sans-serif;
+    --font-money: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  }
+  [data-theme="dark"] {
+    --color-primary: #5CB584; --color-primary-hover: #6FC494; --color-accent: #F5B84D;
+    --color-success: #4CC272; --color-warning: #F5A623; --color-danger: #F0655A;
+    --color-bg: #121513; --color-surface: #1C201D; --color-ink: #E8ECE9;
+    --color-ink-muted: #98A29C; --color-border: #2B302D;
+  }
+
+  * { box-sizing: border-box; margin: 0; }
+  body { background: #DDE1DE; font-family: var(--font-ui); color: var(--color-ink); padding: 24px; font-size: 14px; }
+  .money { font-family: var(--font-money); font-variant-numeric: tabular-nums; text-align: right; }
+
+  .canvas-label { max-width: 1440px; margin: 32px auto 8px; font-size: 14px; color: #444; }
+  .canvas { width: 1440px; height: 900px; margin: 0 auto; background: var(--color-bg);
+    border-radius: 4px; overflow: hidden; display: flex; box-shadow: var(--shadow-overlay); }
+
+  /* ===== AppShell: sidebar ===== */
+  .sidebar { width: 224px; flex: none; background: var(--color-surface); border-right: 1px solid var(--color-border);
+    display: flex; flex-direction: column; padding: 16px 12px; gap: 2px; }
+  .brand { font-size: 16px; font-weight: 600; padding: 4px 12px 16px; }
+  .brand small { display: block; font-weight: 400; font-size: 12px; color: var(--color-ink-muted); }
+  .nav { display: flex; flex-direction: column; gap: 2px; }
+  .nav a { display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 12px; border-radius: var(--radius);
+    color: var(--color-ink); text-decoration: none; font-size: 14px; }
+  .nav a.active { background: #EDF4EF; color: var(--color-primary); font-weight: 600; }
+  .nav a:hover { background: var(--color-bg); }
+  .nav .icon { width: 20px; text-align: center; }
+  .sidebar .foot { margin-top: auto; font-size: 12px; color: var(--color-ink-muted); padding: 0 12px; }
+
+  /* ===== Main column ===== */
+  .content { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .topbar { height: 56px; background: var(--color-surface); border-bottom: 1px solid var(--color-border);
+    display: flex; align-items: center; gap: 12px; padding: 0 24px; flex: none; }
+  .page-title { font-size: 20px; font-weight: 600; }
+  .select { height: 36px; display: inline-flex; align-items: center; gap: 8px; padding: 0 12px;
+    border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); font-size: 14px; }
+  .topbar .right { margin-left: auto; display: flex; gap: 12px; align-items: center; }
+  .avatar { width: 32px; height: 32px; border-radius: 999px; background: var(--color-primary); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; }
+
+  .health { padding: 10px 24px; font-size: 14px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--color-border); }
+  .health.ok { background: #E7F3EA; color: #14602C; }
+  .health.warn { background: #FDF3E3; color: #7A4E00; }
+  .health .dot { width: 10px; height: 10px; border-radius: 999px; flex: none; }
+  .health.ok .dot { background: var(--color-success); }
+  .health.warn .dot { background: var(--color-warning); }
+  .health a { color: inherit; font-weight: 600; }
+
+  .body { flex: 1; padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; overflow: hidden; }
+
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .stat { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card); padding: 16px; }
+  .stat .label { font-size: 14px; color: var(--color-ink-muted); }
+  .stat .value { font-size: 30px; font-weight: 600; margin: 4px 0 2px; }
+  .stat .delta { font-size: 12px; }
+  .delta.up { color: var(--color-success); }
+  .delta.down { color: var(--color-danger); }
+
+  .row2 { flex: 1; display: grid; grid-template-columns: 1.6fr 1fr; gap: 16px; min-height: 0; }
+  .panel { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card); padding: 16px; display: flex; flex-direction: column; min-height: 0; }
+  .panel h3 { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .panel .sub { font-size: 12px; color: var(--color-ink-muted); margin-bottom: 8px; }
+  .chart { flex: 1; min-height: 0; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  thead th { text-align: left; font-weight: 500; color: var(--color-ink-muted); font-size: 12px;
+    border-bottom: 1px solid var(--color-border); padding: 6px 8px; position: sticky; top: 0; background: var(--color-surface); }
+  thead th.num { text-align: right; }
+  tbody td { padding: 7px 8px; border-bottom: 1px solid var(--color-border); }
+  tbody tr:last-child td { border-bottom: 0; }
+  .rank { color: var(--color-ink-muted); width: 24px; }
+
+  /* Empty state */
+  .empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; }
+  .empty .big { font-size: 44px; }
+  .empty h2 { font-size: 24px; font-weight: 600; }
+  .empty p { color: var(--color-ink-muted); max-width: 420px; }
+  .empty .cta { height: 40px; padding: 0 20px; border: 0; border-radius: var(--radius); background: var(--color-primary);
+    color: #fff; font-size: 14px; font-weight: 600; font-family: var(--font-ui); }
+  .empty .cta.secondary { background: var(--color-surface); color: var(--color-ink); border: 1px solid var(--color-border); }
+  .checklist { text-align: left; font-size: 14px; background: var(--color-surface); border: 1px solid var(--color-border);
+    border-radius: var(--radius-card); box-shadow: var(--shadow-card); padding: 16px 20px; width: 420px; }
+  .checklist .item { display: flex; gap: 10px; padding: 6px 0; align-items: center; }
+  .checklist .done { color: var(--color-ink-muted); text-decoration: line-through; }
+  .tick { width: 20px; height: 20px; border-radius: 999px; border: 1px solid var(--color-border);
+    display: inline-flex; align-items: center; justify-content: center; font-size: 12px; flex: none; }
+  .tick.on { background: var(--color-success); border-color: var(--color-success); color: #fff; }
+
+  .note { max-width: 1440px; margin: 8px auto 0; font-size: 13px; color: #555; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     SECTION 1 — Primary state: healthy day, all synced
+     Canvas: Admin web 1440×900 (degrades to 1024)
+============================================================ -->
+<p class="canvas-label"><strong>ADM-02 Dashboard — primary state</strong> (Tue Jul 8, 2026 · all registers synced)</p>
+<div class="canvas">
+  <aside class="sidebar">
+    <div class="brand">Bahay Kubo Grocers<small>RetailOS admin</small></div>
+    <nav class="nav">
+      <a class="active" href="#"><span class="icon">▦</span>Home</a>
+      <a href="#"><span class="icon">🧾</span>Orders</a>
+      <a href="#"><span class="icon">🏷</span>Products</a>
+      <a href="#"><span class="icon">📦</span>Inventory</a>
+      <a href="#"><span class="icon">👥</span>Customers</a>
+      <a href="#"><span class="icon">📈</span>Reports</a>
+      <a href="#"><span class="icon">⚙</span>Settings</a>
+    </nav>
+    <div class="foot">v0.1.0 · all systems normal</div>
+  </aside>
+  <div class="content">
+    <div class="topbar">
+      <div class="page-title">Home</div>
+      <span class="select">Today · Tue Jul 8 ▾</span>
+      <span class="select">All locations ▾</span>
+      <div class="right">
+        <span class="select">⌕ Search orders, products, customers…</span>
+        <span class="avatar">AN</span>
+      </div>
+    </div>
+    <div class="health ok"><span class="dot"></span>All registers synced — last batch 2 minutes ago (Register 2, Poblacion). <a href="#">Sync health</a></div>
+    <div class="body">
+      <div class="stats">
+        <div class="stat">
+          <div class="label">Revenue today</div>
+          <div class="value money" style="text-align:left">₱48,230.50</div>
+          <div class="delta up">▲ 12.4% vs last Tuesday</div>
+        </div>
+        <div class="stat">
+          <div class="label">Transactions</div>
+          <div class="value">142</div>
+          <div class="delta up">▲ 8 vs yesterday</div>
+        </div>
+        <div class="stat">
+          <div class="label">Average basket</div>
+          <div class="value money" style="text-align:left">₱339.65</div>
+          <div class="delta up">▲ 3.9% vs last Tuesday</div>
+        </div>
+        <div class="stat">
+          <div class="label">Items sold</div>
+          <div class="value">389</div>
+          <div class="delta down">▼ 2.1% vs last Tuesday</div>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="panel">
+          <h3>Sales by hour</h3>
+          <div class="sub">Both locations · gross, VAT included · peak 12:00–13:00</div>
+          <svg class="chart" viewBox="0 0 800 300" preserveAspectRatio="none" role="img" aria-label="Sales by hour bar chart">
+            <!-- gridlines -->
+            <line x1="40" y1="250" x2="790" y2="250" stroke="var(--color-border)" />
+            <line x1="40" y1="170" x2="790" y2="170" stroke="var(--color-border)" stroke-dasharray="4 4"/>
+            <line x1="40" y1="90" x2="790" y2="90" stroke="var(--color-border)" stroke-dasharray="4 4"/>
+            <text x="34" y="254" font-size="11" fill="var(--color-ink-muted)" text-anchor="end">0</text>
+            <text x="34" y="174" font-size="11" fill="var(--color-ink-muted)" text-anchor="end">3k</text>
+            <text x="34" y="94" font-size="11" fill="var(--color-ink-muted)" text-anchor="end">6k</text>
+            <!-- bars: 8:00–21:00 -->
+            <g fill="var(--color-primary)">
+              <rect x="52"  y="215" width="38" height="35"/>
+              <rect x="105" y="196" width="38" height="54"/>
+              <rect x="158" y="171" width="38" height="79"/>
+              <rect x="211" y="140" width="38" height="110"/>
+              <rect x="264" y="78"  width="38" height="172"/>
+              <rect x="317" y="62"  width="38" height="188"/>
+              <rect x="370" y="120" width="38" height="130"/>
+              <rect x="423" y="150" width="38" height="100"/>
+              <rect x="476" y="139" width="38" height="111"/>
+              <rect x="529" y="123" width="38" height="127"/>
+              <rect x="582" y="98"  width="38" height="152"/>
+              <rect x="635" y="126" width="38" height="124"/>
+              <rect x="688" y="180" width="38" height="70"/>
+              <rect x="741" y="228" width="38" height="22" fill="var(--color-accent)"/>
+            </g>
+            <!-- current hour marker uses accent -->
+            <g font-size="11" fill="var(--color-ink-muted)" text-anchor="middle">
+              <text x="71"  y="268">8a</text><text x="124" y="268">9a</text><text x="177" y="268">10a</text>
+              <text x="230" y="268">11a</text><text x="283" y="268">12p</text><text x="336" y="268">1p</text>
+              <text x="389" y="268">2p</text><text x="442" y="268">3p</text><text x="495" y="268">4p</text>
+              <text x="548" y="268">5p</text><text x="601" y="268">6p</text><text x="654" y="268">7p</text>
+              <text x="707" y="268">8p</text><text x="760" y="268">9p (now)</text>
+            </g>
+          </svg>
+        </div>
+        <div class="panel">
+          <h3>Top 10 items today</h3>
+          <div class="sub">By revenue · both locations</div>
+          <div style="overflow:hidden; flex:1">
+            <table>
+              <thead><tr><th></th><th>Item</th><th class="num">Qty</th><th class="num">Revenue</th></tr></thead>
+              <tbody>
+                <tr><td class="rank">1</td><td>Dried Mangoes 200g</td><td class="money">46</td><td class="money">₱8,510.00</td></tr>
+                <tr><td class="rank">2</td><td>Barako Coffee Beans 250g</td><td class="money">21</td><td class="money">₱6,720.00</td></tr>
+                <tr><td class="rank">3</td><td>Ube Halaya Jar 340g</td><td class="money">33</td><td class="money">₱5,445.00</td></tr>
+                <tr><td class="rank">4</td><td>Tablea Cacao 200g</td><td class="money">24</td><td class="money">₱5,040.00</td></tr>
+                <tr><td class="rank">5</td><td>Abaca Placemat Set</td><td class="money">12</td><td class="money">₱4,200.00</td></tr>
+                <tr><td class="rank">6</td><td>Polvoron Assorted 12s</td><td class="money">27</td><td class="money">₱3,726.00</td></tr>
+                <tr><td class="rank">7</td><td>Cashew Brittle 150g</td><td class="money">28</td><td class="money">₱3,500.00</td></tr>
+                <tr><td class="rank">8</td><td>Coco Sugar 500g</td><td class="money">15</td><td class="money">₱3,300.00</td></tr>
+                <tr><td class="rank">9</td><td>Calamansi Concentrate 500ml</td><td class="money">22</td><td class="money">₱3,190.00</td></tr>
+                <tr><td class="rank">10</td><td>Banana Chips 100g</td><td class="money">41</td><td class="money">₱2,665.00</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="note">Admin density: 36px controls, 14px body, dense table (design-system.md). Money is right-aligned tabular mono everywhere. The sync-health strip is always present — green and quiet on a good day. Current hour renders in accent (partial hour, not a dip).</p>
+
+<!-- ============================================================
+     SECTION 2 — Non-happy states: sync warning + brand-new store (empty)
+============================================================ -->
+<p class="canvas-label"><strong>ADM-02 Dashboard — sync warning + empty (new store) state</strong></p>
+<div class="canvas" style="height: 560px">
+  <aside class="sidebar">
+    <div class="brand">Bahay Kubo Grocers<small>RetailOS admin</small></div>
+    <nav class="nav">
+      <a class="active" href="#"><span class="icon">▦</span>Home</a>
+      <a href="#"><span class="icon">🧾</span>Orders</a>
+      <a href="#"><span class="icon">🏷</span>Products</a>
+      <a href="#"><span class="icon">📦</span>Inventory</a>
+      <a href="#"><span class="icon">👥</span>Customers</a>
+      <a href="#"><span class="icon">📈</span>Reports</a>
+      <a href="#"><span class="icon">⚙</span>Settings</a>
+    </nav>
+    <div class="foot">v0.1.0</div>
+  </aside>
+  <div class="content">
+    <div class="topbar">
+      <div class="page-title">Home</div>
+      <span class="select">Today ▾</span>
+      <span class="select">All locations ▾</span>
+      <div class="right"><span class="avatar">AN</span></div>
+    </div>
+    <div class="health warn"><span class="dot"></span>Register 2 (Poblacion) hasn’t synced for 6 hours — 14 sales are safe on the device and will upload when it reconnects. <a href="#">View sync health</a></div>
+    <div class="body">
+      <div class="empty">
+        <div class="big">🌱</div>
+        <h2>Welcome to your store</h2>
+        <p>No sales yet today. Get set up in a few minutes — add products, then ring your first sale on the register.</p>
+        <div style="display:flex; gap:12px">
+          <button class="cta">Add your first products</button>
+          <button class="cta secondary">Load sample catalog</button>
+        </div>
+        <div class="checklist">
+          <div class="item done"><span class="tick on">✓</span><span>Create your store</span></div>
+          <div class="item done"><span class="tick on">✓</span><span>Set currency &amp; VAT (PHP · 12% inclusive)</span></div>
+          <div class="item"><span class="tick"></span><span>Add products (or load the sample catalog)</span></div>
+          <div class="item"><span class="tick"></span><span>Connect a register and make your first sale</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="note">The warning banner is calm and factual: sales are safe locally (never alarm language for offline registers). Empty state doubles as onboarding (FR-10.1 checklist preview) with a primary CTA and a sample-data escape hatch — EmptyState-with-CTA is a core pattern (design-system.md §4).</p>
+
+</body>
+</html>

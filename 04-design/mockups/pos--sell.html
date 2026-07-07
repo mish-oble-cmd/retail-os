@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>POS-03 Sell — RetailOS mockup</title>
+<style>
+  /* ===== Counter design tokens — keep in sync with 04-design/design-system.md ===== */
+  :root {
+    --color-primary: #1A4D2E;
+    --color-primary-hover: #143D24;
+    --color-accent: #F5A623;
+    --color-success: #1E8E3E;
+    --color-warning: #F29900;
+    --color-danger: #D93025;
+    --color-bg: #F7F8F7;
+    --color-surface: #FFFFFF;
+    --color-ink: #1C1F1D;
+    --color-ink-muted: #5C6660;
+    --color-border: #E2E6E3;
+    --radius: 8px;
+    --radius-card: 12px;
+    --shadow-card: 0 1px 3px rgba(28, 31, 29, 0.10);
+    --shadow-overlay: 0 8px 24px rgba(28, 31, 29, 0.18);
+    --font-ui: "Inter", system-ui, -apple-system, sans-serif;
+    --font-money: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  }
+  [data-theme="dark"] {
+    --color-primary: #5CB584; --color-primary-hover: #6FC494; --color-accent: #F5B84D;
+    --color-success: #4CC272; --color-warning: #F5A623; --color-danger: #F0655A;
+    --color-bg: #121513; --color-surface: #1C201D; --color-ink: #E8ECE9;
+    --color-ink-muted: #98A29C; --color-border: #2B302D;
+  }
+
+  * { box-sizing: border-box; margin: 0; }
+  body { background: #DDE1DE; font-family: var(--font-ui); color: var(--color-ink); padding: 24px; }
+  .money { font-family: var(--font-money); font-variant-numeric: tabular-nums; text-align: right; }
+
+  .canvas-label { max-width: 1280px; margin: 32px auto 8px; font-size: 14px; color: #444; }
+  .canvas { width: 1280px; height: 800px; margin: 0 auto; background: var(--color-bg);
+    border-radius: 4px; overflow: hidden; display: flex; flex-direction: column;
+    box-shadow: var(--shadow-overlay); }
+
+  /* ===== Top bar ===== */
+  .topbar { height: 56px; background: var(--color-surface); border-bottom: 1px solid var(--color-border);
+    display: flex; align-items: center; gap: 16px; padding: 0 16px; flex: none; }
+  .store-id { font-size: 18px; font-weight: 600; }
+  .store-id small { display: block; font-size: 12px; color: var(--color-ink-muted); font-weight: 400; }
+  .sync-pill { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 14px;
+    padding: 8px 14px; border-radius: 999px; font-weight: 500; }
+  .sync-pill .dot { width: 10px; height: 10px; border-radius: 999px; }
+  .sync-ok { background: #E7F3EA; color: var(--color-success); }
+  .sync-ok .dot { background: var(--color-success); }
+  .sync-off { background: #FDF3E3; color: #9A6200; }
+  .sync-off .dot { background: var(--color-warning); }
+  .staff-chip { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500;
+    padding: 6px 12px 6px 6px; border: 1px solid var(--color-border); border-radius: 999px; background: var(--color-surface); }
+  .avatar { width: 32px; height: 32px; border-radius: 999px; background: var(--color-primary); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; }
+
+  .main { flex: 1; display: flex; min-height: 0; }
+
+  /* ===== Catalog side ===== */
+  .catalog { flex: 1; display: flex; flex-direction: column; padding: 16px; gap: 12px; min-width: 0; }
+  .searchbar { display: flex; gap: 12px; }
+  .search-input { flex: 1; height: 52px; border: 2px solid var(--color-primary); border-radius: var(--radius);
+    background: var(--color-surface); display: flex; align-items: center; gap: 10px; padding: 0 14px;
+    font-size: 18px; color: var(--color-ink-muted);
+    box-shadow: 0 0 0 3px rgba(26, 77, 46, 0.15); }
+  .search-input .kbd { margin-left: auto; font-size: 12px; border: 1px solid var(--color-border);
+    border-radius: 4px; padding: 2px 6px; color: var(--color-ink-muted); }
+  .cats { display: flex; gap: 8px; }
+  .cat { height: 48px; padding: 0 18px; border-radius: 999px; border: 1px solid var(--color-border);
+    background: var(--color-surface); font-size: 18px; display: flex; align-items: center; color: var(--color-ink); }
+  .cat.active { background: var(--color-primary); border-color: var(--color-primary); color: #fff; font-weight: 500; }
+  .grid { flex: 1; display: grid; grid-template-columns: repeat(5, 1fr); grid-auto-rows: 108px; gap: 10px;
+    overflow: hidden; align-content: start; }
+  .tile { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card); padding: 12px; display: flex; flex-direction: column; justify-content: space-between; }
+  .tile .name { font-size: 18px; font-weight: 500; line-height: 1.25; }
+  .tile .price { font-size: 16px; color: var(--color-ink-muted); }
+  .tile.low { border-color: var(--color-warning); }
+  .tile .low-badge { font-size: 12px; color: #9A6200; background: #FDF3E3; border-radius: 4px;
+    padding: 1px 6px; align-self: flex-start; }
+
+  /* ===== Cart panel ===== */
+  .cart { width: 400px; flex: none; background: var(--color-surface); border-left: 1px solid var(--color-border);
+    display: flex; flex-direction: column; }
+  .cart-head { padding: 12px 16px; border-bottom: 1px solid var(--color-border); display: flex; gap: 8px; align-items: center; }
+  .customer-chip { display: flex; align-items: center; gap: 8px; border: 1px dashed var(--color-border);
+    border-radius: 999px; padding: 8px 14px; font-size: 14px; color: var(--color-ink-muted); }
+  .park-btn { margin-left: auto; height: 48px; padding: 0 16px; border-radius: var(--radius);
+    border: 1px solid var(--color-border); background: var(--color-surface); font-size: 16px;
+    font-family: var(--font-ui); color: var(--color-ink); }
+  .lines { flex: 1; overflow: hidden; padding: 4px 0; }
+  .line { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 10px 16px;
+    border-bottom: 1px solid var(--color-border); }
+  .line .name { font-size: 18px; font-weight: 500; }
+  .line .total { font-size: 18px; font-weight: 500; align-self: center; }
+  .line .sub { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; color: var(--color-ink-muted); font-size: 14px; }
+  .stepper { display: inline-flex; align-items: center; border: 1px solid var(--color-border); border-radius: var(--radius); overflow: hidden; }
+  .stepper button { width: 44px; height: 40px; border: 0; background: var(--color-bg); font-size: 20px; color: var(--color-ink); }
+  .stepper .qty { width: 40px; text-align: center; font-size: 16px; font-weight: 600; color: var(--color-ink); }
+  .totals { border-top: 1px solid var(--color-border); padding: 12px 16px 8px; font-size: 16px; }
+  .trow { display: flex; justify-content: space-between; padding: 3px 0; color: var(--color-ink-muted); }
+  .trow.grand { font-size: 20px; font-weight: 600; color: var(--color-ink); padding-top: 8px; }
+  .charge { margin: 8px 16px 16px; height: 64px; border: 0; border-radius: var(--radius-card);
+    background: var(--color-primary); color: #fff; font-size: 22px; font-weight: 600; font-family: var(--font-ui);
+    display: flex; align-items: center; justify-content: space-between; padding: 0 20px; width: calc(100% - 32px); }
+  .charge:hover { background: var(--color-primary-hover); }
+
+  .offline-banner { background: #FDF3E3; color: #7A4E00; font-size: 16px; padding: 10px 16px;
+    display: flex; gap: 10px; align-items: center; border-bottom: 1px solid #F2DDB4; }
+
+  /* Empty state */
+  .empty-cart { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 8px; color: var(--color-ink-muted); text-align: center; padding: 24px; }
+  .empty-cart .big { font-size: 40px; }
+  .empty-cart .title { font-size: 18px; font-weight: 500; color: var(--color-ink); }
+  .empty-cart .hint { font-size: 14px; max-width: 240px; }
+
+  .note { max-width: 1280px; margin: 8px auto 0; font-size: 13px; color: #555; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     SECTION 1 — Primary state: mid-sale, online, synced
+     Canvas: POS desktop/tablet landscape 1280×800
+============================================================ -->
+<p class="canvas-label"><strong>POS-03 Sell — primary state</strong> (online · cart in progress · barcode focus trap active)</p>
+<div class="canvas">
+  <div class="topbar">
+    <div class="store-id">Bahay Kubo Grocers<small>Register 2 · Poblacion branch</small></div>
+    <div class="sync-pill sync-ok"><span class="dot"></span>Synced · just now</div>
+    <div class="staff-chip"><span class="avatar">MR</span>Marites R.</div>
+  </div>
+  <div class="main">
+    <div class="catalog">
+      <div class="searchbar">
+        <div class="search-input">⌕ Scan barcode or search products…<span class="kbd">F2</span></div>
+      </div>
+      <div class="cats">
+        <div class="cat active">All</div>
+        <div class="cat">Pasalubong</div>
+        <div class="cat">Beverages</div>
+        <div class="cat">Pantry</div>
+        <div class="cat">Snacks</div>
+        <div class="cat">Home</div>
+      </div>
+      <div class="grid">
+        <div class="tile"><div class="name">Dried Mangoes 200g</div><div class="price money">₱185.00</div></div>
+        <div class="tile"><div class="name">Barako Coffee Beans 250g</div><div class="price money">₱320.00</div></div>
+        <div class="tile"><div class="name">Banana Chips 100g</div><div class="price money">₱65.00</div></div>
+        <div class="tile"><div class="name">Calamansi Concentrate 500ml</div><div class="price money">₱145.00</div></div>
+        <div class="tile"><div class="name">Coco Sugar 500g</div><div class="price money">₱220.00</div></div>
+        <div class="tile low"><div class="name">Ube Halaya Jar 340g</div><div class="low-badge">3 left</div><div class="price money">₱165.00</div></div>
+        <div class="tile"><div class="name">Polvoron Assorted 12s</div><div class="price money">₱138.00</div></div>
+        <div class="tile"><div class="name">Sampaguita Soap 90g</div><div class="price money">₱48.00</div></div>
+        <div class="tile"><div class="name">Muscovado Sugar 1kg</div><div class="price money">₱96.00</div></div>
+        <div class="tile"><div class="name">Cashew Brittle 150g</div><div class="price money">₱125.00</div></div>
+        <div class="tile"><div class="name">Tablea Cacao 200g</div><div class="price money">₱210.00</div></div>
+        <div class="tile"><div class="name">Coconut Vinegar 750ml</div><div class="price money">₱88.00</div></div>
+        <div class="tile"><div class="name">Abaca Placemat Set</div><div class="price money">₱350.00</div></div>
+        <div class="tile"><div class="name">Dried Fish Dilis 100g</div><div class="price money">₱75.00</div></div>
+        <div class="tile low"><div class="name">Buko Pandan Mix 3s</div><div class="low-badge">5 left</div><div class="price money">₱54.00</div></div>
+      </div>
+    </div>
+    <div class="cart">
+      <div class="cart-head">
+        <div class="customer-chip">＋ Add customer</div>
+        <button class="park-btn">Park cart</button>
+      </div>
+      <div class="lines">
+        <div class="line">
+          <div class="name">Dried Mangoes 200g</div>
+          <div class="total money">₱370.00</div>
+          <div class="sub">
+            <span class="stepper"><button>−</button><span class="qty">2</span><button>＋</button></span>
+            <span class="money" style="text-align:left">@ ₱185.00</span>
+          </div>
+        </div>
+        <div class="line">
+          <div class="name">Barako Coffee Beans 250g</div>
+          <div class="total money">₱320.00</div>
+          <div class="sub">
+            <span class="stepper"><button>−</button><span class="qty">1</span><button>＋</button></span>
+            <span class="money" style="text-align:left">@ ₱320.00</span>
+          </div>
+        </div>
+        <div class="line">
+          <div class="name">Banana Chips 100g</div>
+          <div class="total money">₱195.00</div>
+          <div class="sub">
+            <span class="stepper"><button>−</button><span class="qty">3</span><button>＋</button></span>
+            <span class="money" style="text-align:left">@ ₱65.00</span>
+          </div>
+        </div>
+        <div class="line">
+          <div class="name">Calamansi Concentrate 500ml</div>
+          <div class="total money">₱145.00</div>
+          <div class="sub">
+            <span class="stepper"><button>−</button><span class="qty">1</span><button>＋</button></span>
+            <span class="money" style="text-align:left">@ ₱145.00</span>
+          </div>
+        </div>
+        <div class="line">
+          <div class="name">Coco Sugar 500g</div>
+          <div class="total money">₱220.00</div>
+          <div class="sub">
+            <span class="stepper"><button>−</button><span class="qty">1</span><button>＋</button></span>
+            <span class="money" style="text-align:left">@ ₱220.00</span>
+          </div>
+        </div>
+      </div>
+      <div class="totals">
+        <div class="trow"><span>Subtotal (8 items)</span><span class="money">₱1,250.00</span></div>
+        <div class="trow"><span>Discount</span><span class="money">₱0.00</span></div>
+        <div class="trow"><span>VAT 12% (included)</span><span class="money">₱133.93</span></div>
+        <div class="trow grand"><span>Total</span><span class="money">₱1,250.00</span></div>
+      </div>
+      <button class="charge"><span>Charge</span><span class="money">₱1,250.00</span></button>
+    </div>
+  </div>
+</div>
+<p class="note">Barcode focus trap: scanner input (keyboard wedge) always lands in the search field; product taps never steal it. F-key shortcuts per <code>06-apps/pos-desktop.md</code>. Charge is the single dominant action; Park cart (secondary) is deliberately far from it. VAT figure comes from <code>@retailos/domain</code>: 125000 minor units @ 1200 bp inclusive → 13393.</p>
+
+<!-- ============================================================
+     SECTION 2 — Non-happy states: OFFLINE + EMPTY CART
+============================================================ -->
+<p class="canvas-label"><strong>POS-03 Sell — offline + empty cart state</strong> (network down · 3 sales queued locally · new sale)</p>
+<div class="canvas">
+  <div class="topbar">
+    <div class="store-id">Bahay Kubo Grocers<small>Register 2 · Poblacion branch</small></div>
+    <div class="sync-pill sync-off"><span class="dot"></span>Offline · 3 sales queued</div>
+    <div class="staff-chip"><span class="avatar">MR</span>Marites R.</div>
+  </div>
+  <div class="offline-banner">⚠ Offline — sales are saved on this device and will sync when the connection returns.</div>
+  <div class="main">
+    <div class="catalog">
+      <div class="searchbar">
+        <div class="search-input">⌕ Scan barcode or search products…<span class="kbd">F2</span></div>
+      </div>
+      <div class="cats">
+        <div class="cat active">All</div>
+        <div class="cat">Pasalubong</div>
+        <div class="cat">Beverages</div>
+        <div class="cat">Pantry</div>
+        <div class="cat">Snacks</div>
+        <div class="cat">Home</div>
+      </div>
+      <div class="grid">
+        <div class="tile"><div class="name">Dried Mangoes 200g</div><div class="price money">₱185.00</div></div>
+        <div class="tile"><div class="name">Barako Coffee Beans 250g</div><div class="price money">₱320.00</div></div>
+        <div class="tile"><div class="name">Banana Chips 100g</div><div class="price money">₱65.00</div></div>
+        <div class="tile"><div class="name">Calamansi Concentrate 500ml</div><div class="price money">₱145.00</div></div>
+        <div class="tile"><div class="name">Coco Sugar 500g</div><div class="price money">₱220.00</div></div>
+        <div class="tile low"><div class="name">Ube Halaya Jar 340g</div><div class="low-badge">3 left</div><div class="price money">₱165.00</div></div>
+        <div class="tile"><div class="name">Polvoron Assorted 12s</div><div class="price money">₱138.00</div></div>
+        <div class="tile"><div class="name">Sampaguita Soap 90g</div><div class="price money">₱48.00</div></div>
+        <div class="tile"><div class="name">Muscovado Sugar 1kg</div><div class="price money">₱96.00</div></div>
+        <div class="tile"><div class="name">Cashew Brittle 150g</div><div class="price money">₱125.00</div></div>
+      </div>
+    </div>
+    <div class="cart">
+      <div class="cart-head">
+        <div class="customer-chip">＋ Add customer</div>
+        <button class="park-btn">Parked (2)</button>
+      </div>
+      <div class="empty-cart">
+        <div class="big">🛒</div>
+        <div class="title">Cart is empty</div>
+        <div class="hint">Scan a barcode, search, or tap a product to start a sale. Offline mode changes nothing here.</div>
+      </div>
+      <div class="totals">
+        <div class="trow grand"><span>Total</span><span class="money">₱0.00</span></div>
+      </div>
+      <button class="charge" style="opacity:.45"><span>Charge</span><span class="money">₱0.00</span></button>
+    </div>
+  </div>
+</div>
+<p class="note">Offline is calm, not alarming (design-system.md voice): amber pill + one banner; selling continues identically (FR-1.9). Queued count is visible so the cashier can vouch for the fleet at close. Disabled Charge communicates state without hiding the primary action's position.</p>
+
+</body>
+</html>

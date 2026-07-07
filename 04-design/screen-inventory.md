@@ -54,9 +54,9 @@ Offline banner · empty state (with CTA) · loading skeleton · error state · p
 
 Maintain this table as mockups are produced/approved:
 
-| Screen                   | Mockup file                     | Status    |
-| ------------------------ | ------------------------------- | --------- |
-| POS-03                   | `mockups/pos--sell.html`        | ☐ pending |
-| POS-04                   | `mockups/pos--payment.html`     | ☐ pending |
-| ADM-02                   | `mockups/admin--dashboard.html` | ☐ pending |
-| _(add rows as produced)_ |                                 |           |
+| Screen                   | Mockup file                     | Status   |
+| ------------------------ | ------------------------------- | -------- |
+| POS-03                   | `mockups/pos--sell.html`        | ☐ review |
+| POS-04                   | `mockups/pos--payment.html`     | ☐ review |
+| ADM-02                   | `mockups/admin--dashboard.html` | ☐ review |
+| _(add rows as produced)_ |                                 |          |

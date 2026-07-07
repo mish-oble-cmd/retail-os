@@ -1,0 +1,53 @@
+# Tech Stack
+
+One language (TypeScript) across every surface to maximize code sharing (domain logic must run identically on server and offline clients — see AD-2).
+
+## Summary table
+
+| Layer | Choice | Why (and rejected alternatives) |
+|---|---|---|
+| Language | TypeScript (strict) everywhere | Shared domain/sync code across server, web, Electron, RN. Rejected: Rails-like split stacks — duplicated cart/tax logic breaks offline correctness |
+| Monorepo | pnpm workspaces + Turborepo | Simple, fast, standard. Rejected: Nx (heavier), polyrepo (kills sharing) |
+| Web admin | Next.js (App Router) + React 18+ | SSR for dashboard perf, file routing, mature. |
+| POS web/desktop UI | Vite + React SPA, wrapped by Electron | POS is app-like, no SEO/SSR needs; Vite dev speed; same build runs in browser (free web POS) and Electron |
+| Desktop shell | Electron | Printer/serial/USB access (ESC/POS, cash drawer kick), auto-update, Win/macOS/Linux. Rejected: Tauri (weaker printer ecosystem/Node interop today) — revisit later |
+| Mobile POS | React Native + Expo (dev client) | Camera barcode scan, BLE printers, shares domain/sync packages. Rejected: Flutter (no TS sharing) |
+| Styling | Tailwind CSS + our `@retailos/ui` components; RN: NativeWind + shared design tokens | Tokens defined once (`packages/ui/tokens`), consumed by web + RN |
+| State (clients) | Zustand (UI state) + TanStack Query (server state, admin) + SQLite as source of truth on POS | Keep it boring |
+| Local DB | SQLite — Electron: better-sqlite3; RN: expo-sqlite; browser POS: wa-sqlite/OPFS (or degrade to online-required in browser) | Single SQL dialect for `@retailos/sync` |
+| Backend | Node.js 22 LTS + NestJS | Modular monolith structure enforced by Nest modules; DI; mature ecosystem. Rejected: Express bare (no structure), Go (no code sharing) |
+| ORM | Drizzle ORM | Type-safe, SQL-transparent, light; plays well with tenant-guard wrappers. Alternative: Prisma acceptable if team prefers |
+| Primary DB | PostgreSQL 16 | RLS for tenancy backstop, JSONB for custom fields, boring and bulletproof |
+| Cache/queue | Redis + BullMQ | Jobs: webhooks, emails, imports, report rollups |
+| Object storage | S3-compatible (R2/S3/MinIO) | Product images, CSV exports, receipt PDFs |
+| API style | REST + OpenAPI (generated client in `@retailos/api-client`); webhooks with HMAC | GraphQL deferred — REST is simpler to version/cache; revisit for public API v2 |
+| AuthN | Email+password + TOTP 2FA (admin); staff PIN (register); JWT access + rotating refresh; API keys w/ scopes | Consider Auth.js/Lucia helpers, but auth lives in our identity module |
+| Payments (P4) | Adapter interface; first: Stripe Terminal + manual mode | Processor-agnostic is a product pillar |
+| Receipts/printing | ESC/POS via `node-thermal-printer`-class lib (Electron), BLE/TCP ESC/POS (RN); email via Resend/SES | Commodity hardware pillar |
+| Testing | Vitest (unit), Playwright (web e2e), Maestro (RN e2e), Testcontainers (API integration) | See testing-strategy.md |
+| CI/CD | GitHub Actions; Docker; deploy API to Fly.io/Render/ECS; admin+POS web to Vercel/CF Pages; Electron via electron-builder + auto-update; RN via EAS | |
+| Observability | OpenTelemetry, Grafana/Prometheus (or vendor), Sentry all clients, pino logs | Sync health dashboards are mandatory |
+
+## Package graph (monorepo)
+
+```
+packages/
+  domain        ← pure TS: money, cart, tax, discounts, loyalty rules. NO I/O.
+  sync          ← sync engine: outbox, delta apply, conflict rules (uses domain)
+  api-client    ← generated from OpenAPI + typed fetch wrapper
+  ui            ← web React components + design tokens (tokens also exported for RN)
+  config        ← eslint, tsconfig, prettier shared configs
+
+apps/
+  api           ← NestJS modular monolith
+  admin         ← Next.js back office
+  pos-web       ← Vite React POS (browser + loaded by Electron)
+  pos-desktop   ← Electron shell (printing, drawer, auto-update) loading pos-web
+  pos-mobile    ← Expo React Native POS
+```
+
+Dependency rule: `apps/* → packages/*` only. `domain` depends on nothing. `sync` depends only on `domain`. No app imports another app.
+
+## Version pinning policy
+
+LTS Node; renovate-bot for dependency PRs; libraries chosen must be replaceable behind an interface (printer, payments, email, storage are all adapters).

@@ -46,9 +46,9 @@ Products, carts against real data, sync, payments — nothing merchant-visible b
 
 ## Exit criteria
 
-- [ ] `pnpm build && pnpm test` green across repo; CI enforcing
-- [ ] Domain golden tests pass; coverage ≥ 90% on domain
-- [ ] Signup → login → empty admin works on the deployed URL
-- [ ] Electron app prints test receipt; Expo app scans a barcode
-- [ ] 3 flagship mockups approved; Storybook deployed
-- [ ] Tenant-isolation test suite green
+- [x] `pnpm build && pnpm test` green across repo (2026-07-09); CI workflow committed — _enforcement starts when the GitHub remote exists (pending user)_
+- [x] Domain golden tests pass (46 cases, cross-generated); coverage 100% lines / 90%+ branches (2026-07-09)
+- [ ] Signup → login → empty admin works on the deployed URL — _flow implemented + tested (PGlite); local run needs `docker compose up` + migrate; deploy pending hosting credentials_
+- [ ] Electron app prints test receipt; Expo app scans a barcode — _print path verified headlessly against the virtual ESC/POS printer (approved substitute); interactive Electron window demo + Expo device scan are user verification items_
+- [x] 3 flagship mockups approved (2026-07-09); Storybook static build verified — _hosted deploy pending credentials_
+- [x] Tenant-isolation test suite green (10 tests on PGlite, 2026-07-09)

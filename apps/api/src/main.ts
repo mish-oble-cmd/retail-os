@@ -19,6 +19,13 @@ async function bootstrap(): Promise<void> {
   app.useLogger(app.get(Logger));
   app.setGlobalPrefix('api/v1');
   app.useGlobalFilters(new ProblemJsonFilter());
+  // Session cookies ride cross-origin from the admin app (localhost:3000 in dev).
+  app.enableCors({
+    origin: (process.env['CORS_ORIGINS'] ?? 'http://localhost:3000,http://localhost:5173').split(
+      ',',
+    ),
+    credentials: true,
+  });
 
   const isProduction = process.env['NODE_ENV'] === 'production';
   if (isProduction && !process.env['SESSION_SECRET']) {

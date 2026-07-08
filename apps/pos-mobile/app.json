@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "name": "RetailOS POS",
+    "slug": "retailos-pos",
+    "version": "0.0.1",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": { "supportsTablet": true, "bundleIdentifier": "dev.retailos.pos" },
+    "android": { "package": "dev.retailos.pos" },
+    "plugins": [
+      ["expo-camera", { "cameraPermission": "RetailOS scans product barcodes with the camera." }]
+    ]
+  }
+}

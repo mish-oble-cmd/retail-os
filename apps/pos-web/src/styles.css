@@ -1,0 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    font-family: var(--font-ui);
+    color: var(--color-ink);
+    background: var(--color-bg);
+    /* POS is an app, not a page */
+    overscroll-behavior: none;
+    user-select: none;
+  }
+}

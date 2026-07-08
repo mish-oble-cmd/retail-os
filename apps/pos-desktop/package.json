@@ -2,20 +2,26 @@
   "name": "@retailos/pos-desktop",
   "version": "0.0.1",
   "private": true,
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "dist/main/main.js",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src",
-    "test": "echo 'no tests yet'"
+    "lint": "eslint src test",
+    "test": "vitest run",
+    "dev": "tsc -p tsconfig.build.json && electron .",
+    "virtual-printer": "node tools/virtual-escpos-printer.mjs"
   },
   "devDependencies": {
     "@retailos/config": "workspace:*",
     "@eslint/js": "^9.18.0",
+    "@types/node": "^22",
+    "electron": "^33.3.1",
     "eslint": "^9.18.0",
     "typescript": "^5.7.3",
-    "typescript-eslint": "^8.20.0"
+    "typescript-eslint": "^8.20.0",
+    "vitest": "^2.1.8"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9"
   }
 }

@@ -3,19 +3,32 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
-    "test": "echo 'no tests yet'"
+    "test": "echo 'pos-web: offline sell e2e arrives Phase 1 (Playwright)'"
   },
   "devDependencies": {
     "@retailos/config": "workspace:*",
     "@eslint/js": "^9.18.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
     "eslint": "^9.18.0",
+    "postcss": "^8.5.0",
+    "tailwindcss": "^3.4.17",
     "typescript": "^5.7.3",
-    "typescript-eslint": "^8.20.0"
+    "typescript-eslint": "^8.20.0",
+    "vite": "^5.4.0"
+  },
+  "dependencies": {
+    "@retailos/domain": "workspace:*",
+    "@retailos/ui": "workspace:*",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   }
 }

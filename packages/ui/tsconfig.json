@@ -1,5 +1,9 @@
 {
   "extends": "@retailos/config/tsconfig.base.json",
-  "compilerOptions": { "noEmit": true },
+  "compilerOptions": {
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"]
+  },
   "include": ["src"]
 }

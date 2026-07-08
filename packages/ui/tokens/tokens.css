@@ -1,0 +1,37 @@
+/* GENERATED from tokens.json by scripts/build-tokens.mjs — do not edit by hand. */
+:root {
+  --color-primary: #1a4d2e;
+  --color-primary-hover: #143d24;
+  --color-accent: #f5a623;
+  --color-success: #1e8e3e;
+  --color-warning: #f29900;
+  --color-danger: #d93025;
+  --color-bg: #f7f8f7;
+  --color-surface: #ffffff;
+  --color-ink: #1c1f1d;
+  --color-ink-muted: #5c6660;
+  --color-border: #e2e6e3;
+}
+
+:root {
+  --font-ui: Inter, system-ui, -apple-system, sans-serif;
+  --font-money: JetBrains Mono, ui-monospace, SFMono-Regular, monospace;
+  --radius: 8px;
+  --radius-card: 12px;
+  --shadow-card: 0 1px 3px rgba(28, 31, 29, 0.1);
+  --shadow-overlay: 0 8px 24px rgba(28, 31, 29, 0.18);
+}
+
+[data-theme='dark'] {
+  --color-primary: #5cb584;
+  --color-primary-hover: #6fc494;
+  --color-accent: #f5b84d;
+  --color-success: #4cc272;
+  --color-warning: #f5a623;
+  --color-danger: #f0655a;
+  --color-bg: #121513;
+  --color-surface: #1c201d;
+  --color-ink: #e8ece9;
+  --color-ink-muted: #98a29c;
+  --color-border: #2b302d;
+}

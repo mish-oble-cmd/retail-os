@@ -6,7 +6,8 @@
   "exports": {
     "./tsconfig.base.json": "./tsconfig.base.json",
     "./eslint": "./eslint.config.mjs",
-    "./prettier": "./prettier.config.mjs"
+    "./prettier": "./prettier.config.mjs",
+    "./tailwind-preset": "./tailwind-preset.cjs"
   },
   "scripts": {
     "lint": "echo 'config package: nothing to lint'",

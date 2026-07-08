@@ -1,0 +1,77 @@
+openapi: 3.0.0
+paths:
+  /api/v1/health:
+    get:
+      operationId: getHealth
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      summary: Liveness probe (no dependencies touched)
+      tags:
+        - platform
+  /api/v1/auth/signup:
+    post:
+      operationId: signup
+      parameters: []
+      responses:
+        "201":
+          description: ""
+      summary: Create a store and its Owner account (minimal Phase 0 signup)
+      tags: &a1
+        - auth
+  /api/v1/auth/login:
+    post:
+      operationId: login
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      summary: Sign in with email + password (+ TOTP when enrolled)
+      tags: *a1
+  /api/v1/auth/logout:
+    post:
+      operationId: logout
+      parameters: []
+      responses:
+        "204":
+          description: ""
+      summary: Destroy the current session
+      tags: *a1
+  /api/v1/auth/me:
+    get:
+      operationId: getMe
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      summary: Current session identity
+      tags: *a1
+  /api/v1/auth/totp/enroll:
+    post:
+      operationId: totpEnroll
+      parameters: []
+      responses:
+        "201":
+          description: ""
+      summary: Start TOTP enrollment (optional in Phase 0)
+      tags: *a1
+  /api/v1/auth/totp/activate:
+    post:
+      operationId: totpActivate
+      parameters: []
+      responses:
+        "204":
+          description: ""
+      summary: Confirm the authenticator code to turn 2FA on
+      tags: *a1
+info:
+  title: RetailOS API
+  description: REST API per 03-architecture/api-design.md. Internal clients are
+    the first consumers; public from Phase 5.
+  version: 1.0.0-phase0
+  contact: {}
+tags: []
+servers: []
+components:
+  schemas: {}

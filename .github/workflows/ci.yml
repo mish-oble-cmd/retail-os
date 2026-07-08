@@ -24,6 +24,12 @@ jobs:
       - run: pnpm test
       - run: pnpm build
       - run: pnpm format:check
+      # Codegen is one-way (monorepo-structure.md rule 5): regenerate the spec
+      # from the app and fail if the committed openapi/v1.yaml drifted.
+      - name: OpenAPI drift check
+        run: |
+          node apps/api/dist/openapi.js
+          git diff --exit-code apps/api/openapi/v1.yaml
 
   # Preview deploys (Vercel: admin, pos-web, Storybook; Fly.io: api) are wired but
   # disabled until hosting credentials are provided — see 03-architecture/tech-stack.md

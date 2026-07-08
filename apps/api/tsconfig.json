@@ -1,5 +1,13 @@
 {
   "extends": "@retailos/config/tsconfig.base.json",
-  "compilerOptions": { "noEmit": true },
-  "include": ["src"]
+  "compilerOptions": {
+    "noEmit": true,
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "verbatimModuleSyntax": false,
+    "isolatedModules": false,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
+  },
+  "include": ["src", "test"]
 }

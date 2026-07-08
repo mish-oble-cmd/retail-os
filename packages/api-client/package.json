@@ -6,15 +6,17 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
-    "typecheck": "tsc --noEmit",
-    "lint": "eslint src",
-    "test": "echo 'no tests yet'"
+    "generate": "openapi-typescript ../../apps/api/openapi/v1.yaml -o src/generated/schema.d.ts",
+    "build": "pnpm generate && tsc -p tsconfig.build.json",
+    "typecheck": "pnpm generate && tsc --noEmit",
+    "lint": "eslint src --ignore-pattern 'src/generated/**'",
+    "test": "echo 'api-client: typed against generated schema; behavior tested via consumers'"
   },
   "devDependencies": {
-    "@retailos/config": "workspace:*",
     "@eslint/js": "^9.18.0",
+    "@retailos/config": "workspace:*",
     "eslint": "^9.18.0",
+    "openapi-typescript": "^7.5.0",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.20.0"
   }

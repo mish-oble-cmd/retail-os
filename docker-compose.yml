@@ -1,0 +1,29 @@
+# Local dev services (deployment-devops.md §Environments).
+# Postgres user is a member of retailos_app semantics via migrations; see
+# apps/api/src/db/migrations/0000_identity_topology.sql.
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: retailos
+      POSTGRES_PASSWORD: retailos
+      POSTGRES_DB: retailos
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+  redis:
+    image: redis:7
+    ports: ["6379:6379"]
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: retailos
+      MINIO_ROOT_PASSWORD: retailos-dev
+    ports: ["9000:9000", "9001:9001"]
+    volumes: [miniodata:/data]
+  mailpit:
+    image: axllent/mailpit
+    ports: ["8025:8025", "1025:1025"]
+volumes:
+  pgdata:
+  miniodata:

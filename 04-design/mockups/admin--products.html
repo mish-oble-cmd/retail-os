@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>ADM-03 Products list — RetailOS mockup</title>
+<style>
+  /* ===== Counter design tokens — keep in sync with 04-design/design-system.md ===== */
+  :root {
+    --color-primary: #1A4D2E;
+    --color-primary-hover: #143D24;
+    --color-accent: #F5A623;
+    --color-success: #1E8E3E;
+    --color-warning: #F29900;
+    --color-danger: #D93025;
+    --color-bg: #F7F8F7;
+    --color-surface: #FFFFFF;
+    --color-ink: #1C1F1D;
+    --color-ink-muted: #5C6660;
+    --color-border: #E2E6E3;
+    --radius: 8px;
+    --radius-card: 12px;
+    --shadow-card: 0 1px 3px rgba(28, 31, 29, 0.10);
+    --shadow-overlay: 0 8px 24px rgba(28, 31, 29, 0.18);
+    --font-ui: "Inter", system-ui, -apple-system, sans-serif;
+    --font-money: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  }
+  [data-theme="dark"] {
+    --color-primary: #5CB584; --color-primary-hover: #6FC494; --color-accent: #F5B84D;
+    --color-success: #4CC272; --color-warning: #F5A623; --color-danger: #F0655A;
+    --color-bg: #121513; --color-surface: #1C201D; --color-ink: #E8ECE9;
+    --color-ink-muted: #98A29C; --color-border: #2B302D;
+  }
+
+  * { box-sizing: border-box; margin: 0; }
+  body { background: #DDE1DE; font-family: var(--font-ui); color: var(--color-ink); padding: 24px; font-size: 14px; }
+  .money { font-family: var(--font-money); font-variant-numeric: tabular-nums; text-align: right; }
+  .mono { font-family: var(--font-money); font-variant-numeric: tabular-nums; }
+  svg.ic { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.75;
+    stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  svg.ic.xs { width: 16px; height: 16px; }
+
+  .canvas-label { max-width: 1440px; margin: 32px auto 8px; font-size: 14px; color: #444; }
+  .canvas { width: 1440px; height: 900px; margin: 0 auto; background: var(--color-bg);
+    border-radius: 4px; overflow: hidden; display: flex; box-shadow: var(--shadow-overlay); position: relative; }
+  .note { max-width: 1440px; margin: 8px auto 0; font-size: 13px; color: #555; }
+
+  /* ===== AppShell (matches ADM-02) ===== */
+  .sidebar { width: 224px; flex: none; background: var(--color-surface); border-right: 1px solid var(--color-border);
+    display: flex; flex-direction: column; padding: 16px 12px; gap: 2px; }
+  .brand { font-size: 16px; font-weight: 600; padding: 4px 12px 16px; }
+  .brand small { display: block; font-weight: 400; font-size: 12px; color: var(--color-ink-muted); }
+  .nav { display: flex; flex-direction: column; gap: 2px; }
+  .nav a { display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 12px; border-radius: var(--radius);
+    color: var(--color-ink); text-decoration: none; font-size: 14px; }
+  .nav a.active { background: #EDF4EF; color: var(--color-primary); font-weight: 600; }
+  .nav .icon { width: 20px; display: inline-flex; align-items: center; justify-content: center; color: var(--color-ink-muted); }
+  .nav a.active .icon { color: var(--color-primary); }
+  .sidebar .foot { margin-top: auto; font-size: 12px; color: var(--color-ink-muted); padding: 0 12px; }
+
+  .content { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .topbar { height: 56px; background: var(--color-surface); border-bottom: 1px solid var(--color-border);
+    display: flex; align-items: center; gap: 12px; padding: 0 24px; flex: none; }
+  .page-title { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
+  .count { font-size: 13px; color: var(--color-ink-muted); }
+  .topbar .right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .btn { height: 36px; padding: 0 14px; border: 1px solid var(--color-border); border-radius: var(--radius);
+    background: var(--color-surface); font-size: 14px; font-family: var(--font-ui); color: var(--color-ink);
+    display: inline-flex; align-items: center; gap: 8px; }
+  .btn.primary { border: 0; background: var(--color-primary); color: #fff; font-weight: 600; }
+  .btn.primary:hover { background: var(--color-primary-hover); }
+  .avatar { width: 32px; height: 32px; border-radius: 999px; background: var(--color-primary); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; }
+
+  .body { flex: 1; padding: 16px 24px; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+
+  /* Filters */
+  .filters { display: flex; gap: 8px; align-items: center; }
+  .search { width: 320px; height: 36px; border: 1px solid var(--color-border); border-radius: var(--radius);
+    background: var(--color-surface); display: flex; align-items: center; gap: 8px; padding: 0 10px;
+    font-size: 14px; color: var(--color-ink-muted); }
+  .select { height: 36px; display: inline-flex; align-items: center; gap: 8px; padding: 0 12px;
+    border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); font-size: 14px; }
+  .select.on { border-color: var(--color-primary); color: var(--color-primary); font-weight: 500; }
+
+  /* Bulk bar */
+  .bulk { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--color-border);
+    border-radius: var(--radius); background: #EDF4EF; font-size: 14px; }
+  .bulk .n { font-weight: 600; color: var(--color-primary); }
+  .bulk .sp { flex: 1; }
+  .bulk .btn.danger { border-color: #F3C1BD; color: var(--color-danger); }
+
+  /* Table */
+  .tablewrap { flex: 1; background: var(--color-surface); border: 1px solid var(--color-border);
+    border-radius: var(--radius-card); box-shadow: var(--shadow-card); overflow: hidden; display: flex; flex-direction: column; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  thead th { text-align: left; font-weight: 600; color: var(--color-ink-muted); font-size: 12px;
+    letter-spacing: 0.04em; text-transform: uppercase; border-bottom: 1px solid var(--color-border);
+    padding: 10px 12px; background: var(--color-surface); }
+  thead th.num, td.num { text-align: right; }
+  tbody td { padding: 9px 12px; border-bottom: 1px solid var(--color-border); vertical-align: middle; }
+  tbody tr:hover { background: var(--color-bg); }
+  tbody tr.sel { background: #EDF4EF; }
+  .cbx { width: 16px; height: 16px; border: 1.5px solid var(--color-border); border-radius: 4px; display: inline-block; }
+  .cbx.on { background: var(--color-primary); border-color: var(--color-primary); position: relative; }
+  .cbx.on::after { content: "✓"; color: #fff; font-size: 11px; position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center; }
+  .prod { display: flex; align-items: center; gap: 10px; }
+  .thumb { width: 32px; height: 32px; border-radius: 6px; background: #EDF4EF; color: var(--color-primary);
+    display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex: none; }
+  .prod .nm { font-weight: 500; }
+  .prod .vt { font-size: 12px; color: var(--color-ink-muted); }
+  .sku { font-family: var(--font-money); font-size: 13px; color: var(--color-ink-muted); }
+  .pill { font-size: 12px; font-weight: 500; border-radius: 999px; padding: 2px 10px; }
+  .p-active { background: #E7F3EA; color: var(--color-success); }
+  .p-draft { background: var(--color-bg); color: var(--color-ink-muted); border: 1px solid var(--color-border); }
+  .stock-low { color: #9A6200; font-weight: 600; }
+  .stock-neg { color: var(--color-danger); font-weight: 600; }
+  .tfoot { margin-top: auto; display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 12px; font-size: 13px; color: var(--color-ink-muted); border-top: 1px solid var(--color-border); }
+
+  /* Import report modal (section 2) */
+  .backdrop { position: absolute; inset: 0; background: rgba(28, 31, 29, 0.45); z-index: 1; }
+  .modal { position: absolute; z-index: 2; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 720px; background: var(--color-surface); border-radius: var(--radius-card);
+    box-shadow: var(--shadow-overlay); padding: 28px 32px; }
+  .modal h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 4px; }
+  .modal .sub { font-size: 14px; color: var(--color-ink-muted); margin-bottom: 16px; }
+  .tally { display: flex; gap: 12px; margin-bottom: 16px; }
+  .tally .t { flex: 1; border: 1px solid var(--color-border); border-radius: var(--radius); padding: 12px 16px; }
+  .tally .t .v { font-size: 24px; font-weight: 600; font-family: var(--font-money); }
+  .tally .t .l { font-size: 12px; color: var(--color-ink-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; margin-top: 2px; }
+  .tally .t.bad { border-color: #F3C1BD; } .tally .t.bad .v { color: var(--color-danger); }
+  .errtable { border: 1px solid var(--color-border); border-radius: var(--radius); overflow: hidden; margin-bottom: 18px; }
+  .errtable table { font-size: 13px; }
+  .errtable td:first-child, .errtable th:first-child { width: 64px; font-family: var(--font-money); }
+  .modal .foot { display: flex; gap: 10px; justify-content: flex-end; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     SECTION 1 — Primary state: populated list, 2 rows selected
+     Canvas: Admin web 1440×900 (degrades to 1024)
+============================================================ -->
+<p class="canvas-label"><strong>ADM-03 Products list — primary state</strong> (213 products · category filter on · 2 selected → bulk bar)</p>
+<div class="canvas">
+  <aside class="sidebar">
+    <div class="brand">Bahay Kubo Grocers<small>RetailOS admin</small></div>
+    <nav class="nav">
+      <a href="#"><span class="icon"><svg class="ic" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>Home</a>
+      <a href="#"><span class="icon"><svg class="ic" viewBox="0 0 24 24"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M8 7h8"/><path d="M8 11h8"/><path d="M8 15h5"/></svg></span>Orders</a>
+      <a class="active" href="#"><span class="icon"><svg class="ic" viewBox="0 0 24 24"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5"/></svg></span>Products</a>
+      <a href="#"><span class="icon"><svg class="ic" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" y1="22" x2="12" y2="12"/></svg></span>Inventory</a>
+      <a href="#"><span class="icon"><svg class="ic" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>Customers</a>
+      <a href="#"><span class="icon"><svg class="ic" viewBox="0 0 24 24"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></span>Reports</a>
+      <a href="#"><span class="icon"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.9 4.9 1.4 1.4"/><path d="m17.7 17.7 1.4 1.4"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.3 17.7-1.4 1.4"/><path d="m19.1 4.9-1.4 1.4"/></svg></span>Settings</a>
+    </nav>
+    <div class="foot">v0.1.0 · all systems normal</div>
+  </aside>
+  <div class="content">
+    <div class="topbar">
+      <div class="page-title">Products</div>
+      <span class="count">213 products · 268 variants</span>
+      <div class="right">
+        <button class="btn"><svg class="ic xs" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Import CSV</button>
+        <button class="btn"><svg class="ic xs" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Export</button>
+        <button class="btn primary"><svg class="ic xs" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>Add product</button>
+        <span class="avatar">JD</span>
+      </div>
+    </div>
+    <div class="body">
+      <div class="filters">
+        <div class="search"><svg class="ic xs" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>Search name, SKU, or barcode…</div>
+        <span class="select on">Category: Pasalubong ✕</span>
+        <span class="select">Status ▾</span>
+        <span class="select">Stock ▾</span>
+      </div>
+      <div class="bulk">
+        <span class="n">2 selected</span>
+        <span class="sp"></span>
+        <button class="btn">Set status ▾</button>
+        <button class="btn">Export selected</button>
+        <button class="btn danger">Delete…</button>
+      </div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr>
+            <th style="width:36px"><span class="cbx"></span></th>
+            <th>Product</th><th>Category</th><th>SKU</th><th class="num">Price</th><th class="num">Stock · Poblacion</th><th>Status</th>
+          </tr></thead>
+          <tbody>
+            <tr class="sel"><td><span class="cbx on"></span></td>
+              <td><div class="prod"><span class="thumb">DM</span><div><div class="nm">Dried Mangoes 200g</div></div></div></td>
+              <td>Pasalubong</td><td class="sku">DM-200</td><td class="money">₱185.00</td><td class="num mono">142</td><td><span class="pill p-active">Active</span></td></tr>
+            <tr class="sel"><td><span class="cbx on"></span></td>
+              <td><div class="prod"><span class="thumb">UH</span><div><div class="nm">Ube Halaya Jar 340g</div></div></div></td>
+              <td>Pasalubong</td><td class="sku">UH-340</td><td class="money">₱165.00</td><td class="num mono stock-low">3</td><td><span class="pill p-active">Active</span></td></tr>
+            <tr><td><span class="cbx"></span></td>
+              <td><div class="prod"><span class="thumb">TC</span><div><div class="nm">Tablea Cacao</div><div class="vt">3 variants · 100g / 200g / 400g</div></div></div></td>
+              <td>Pasalubong</td><td class="sku">TC-***</td><td class="money">₱120.00–398.00</td><td class="num mono">87</td><td><span class="pill p-active">Active</span></td></tr>
+            <tr><td><span class="cbx"></span></td>
+              <td><div class="prod"><span class="thumb">PA</span><div><div class="nm">Polvoron Assorted 12s</div></div></div></td>
+              <td>Pasalubong</td><td class="sku">PA-012</td><td class="money">₱138.00</td><td class="num mono">64</td><td><span class="pill p-active">Active</span></td></tr>
+            <tr><td><span class="cbx"></span></td>
+              <td><div class="prod"><span class="thumb">CB</span><div><div class="nm">Cashew Brittle 150g</div></div></div></td>
+              <td>Pasalubong</td><td class="sku">CB-150</td><td class="money">₱125.00</td><td class="num mono">33</td><td><span class="pill p-active">Active</span></td></tr>
+            <tr><td><span class="cbx"></span></td>
+              <td><div class="prod"><span class="thumb">SS</span><div><div class="nm">Sampaguita Soap 90g</div></div></div></td>
+              <td>Pasalubong</td><td class="sku">SS-090</td><td class="money">₱48.00</td><td class="num mono stock-neg">−2</td><td><span class="pill p-active">Active</span></td></tr>
+            <tr><td><span class="cbx"></span></td>
+              <td><div class="prod"><span class="thumb">BP</span><div><div class="nm">Buko Pandan Mix 3s</div></div></div></td>
+              <td>Pasalubong</td><td class="sku">BP-003</td><td class="money">₱54.00</td><td class="num mono stock-low">5</td><td><span class="pill p-active">Active</span></td></tr>
+            <tr><td><span class="cbx"></span></td>
+              <td><div class="prod"><span class="thumb">GB</span><div><div class="nm">Gift Basket — Fiesta</div><div class="vt">custom assembly, not yet priced</div></div></div></td>
+              <td>Pasalubong</td><td class="sku">GB-FST</td><td class="money">—</td><td class="num mono">—</td><td><span class="pill p-draft">Draft</span></td></tr>
+          </tbody>
+        </table>
+        <div class="tfoot">
+          <span>Showing 8 of 46 in Pasalubong · filtered from 213</span>
+          <span>‹ Prev · <strong>Next ›</strong></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="note">DataTable at admin density (36px controls, uppercase 12px column heads, sticky header in the real build). Stock states are color plus number — amber ≤ reorder point, red negative (FR-3.7 never blocks the sale, so the list is where negatives get noticed). Draft rows show em-dashes, not zeros: no price is different from ₱0.00. Bulk bar appears only with a selection; Delete… keeps its distance and confirms. Variant products show the range, not a fake single price. Cursor pagination per api-design.md.</p>
+
+<!-- ============================================================
+     SECTION 2 — CSV import report (Phase 1 basic import per FR-2.6 subset)
+============================================================ -->
+<p class="canvas-label"><strong>ADM-03 Products list — CSV import report</strong> (200-row file · 182 added · 18 skipped with reasons)</p>
+<div class="canvas">
+  <aside class="sidebar">
+    <div class="brand">Bahay Kubo Grocers<small>RetailOS admin</small></div>
+    <nav class="nav">
+      <a href="#"><span class="icon"><svg class="ic" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>Home</a>
+      <a href="#"><span class="icon"><svg class="ic" viewBox="0 0 24 24"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M8 7h8"/><path d="M8 11h8"/><path d="M8 15h5"/></svg></span>Orders</a>
+      <a class="active" href="#"><span class="icon"><svg class="ic" viewBox="0 0 24 24"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5"/></svg></span>Products</a>
+      <a href="#"><span class="icon"><svg class="ic" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" y1="22" x2="12" y2="12"/></svg></span>Inventory</a>
+      <a href="#"><span class="icon"><svg class="ic" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>Customers</a>
+      <a href="#"><span class="icon"><svg class="ic" viewBox="0 0 24 24"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></span>Reports</a>
+      <a href="#"><span class="icon"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.9 4.9 1.4 1.4"/><path d="m17.7 17.7 1.4 1.4"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.3 17.7-1.4 1.4"/><path d="m19.1 4.9-1.4 1.4"/></svg></span>Settings</a>
+    </nav>
+    <div class="foot">v0.1.0</div>
+  </aside>
+  <div class="content">
+    <div class="topbar">
+      <div class="page-title">Products</div>
+      <div class="right"><span class="avatar">JD</span></div>
+    </div>
+  </div>
+  <div class="backdrop"></div>
+  <div class="modal">
+    <h1>Import finished</h1>
+    <p class="sub">sample-catalog-2026.csv · 200 rows · skipped rows were not imported — fix them and re-import just those rows</p>
+    <div class="tally">
+      <div class="t"><div class="v">182</div><div class="l">Products added</div></div>
+      <div class="t bad"><div class="v">18</div><div class="l">Rows skipped</div></div>
+    </div>
+    <div class="errtable">
+      <table>
+        <thead><tr><th>Row</th><th>Problem</th></tr></thead>
+        <tbody>
+          <tr><td>14</td><td>Barcode 4801234567893 is already used by “Coco Sugar 500g” — barcodes are unique per store</td></tr>
+          <tr><td>27</td><td>Price is empty — enter a whole-peso or centavo amount like 185 or 185.50</td></tr>
+          <tr><td>58</td><td>Category “Chill Drinks” doesn’t exist — create it first or match an existing category</td></tr>
+          <tr><td>61</td><td>Duplicate SKU BC-100 within this file (also on row 44)</td></tr>
+          <tr><td>90</td><td>option1_value given without option1_name — variant rows need both</td></tr>
+          <tr><td colspan="2" style="color:var(--color-ink-muted)">…13 more in the error file</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="modal foot" style="position:static; padding:0; box-shadow:none; width:auto; transform:none;">
+      <button class="btn"><svg class="ic xs" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download 18 skipped rows (CSV)</button>
+      <button class="btn primary">Done — view products</button>
+    </div>
+  </div>
+</div>
+<p class="note">Phase 1 basic import per the FR-2.6 subset (kickoff decision #1): create-only, fixed template, valid rows import, invalid rows skip with a per-row reason. Every error says how to fix it, and the skipped rows download as a CSV you can correct and re-import — the loop closes without re-touching the 182 good rows. Dry-run mode and image URLs arrive with full FR-2.6 in Phase 2.</p>
+
+</body>
+</html>

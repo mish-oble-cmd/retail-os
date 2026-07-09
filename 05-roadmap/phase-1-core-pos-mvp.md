@@ -4,9 +4,24 @@
 
 **FRs:** FR-1.1–1.8, FR-1.9 (queue level), FR-2.1–2.2 (basic), FR-3.1 (sales ledger), FR-5.1 (PIN), FR-6.1–6.2, FR-10.1, FR-10.2 (core settings), manual card tender.
 
+## Kickoff decisions (2026-07-09)
+
+Adopted at Phase 1 kickoff (proposed by AI, standing unless vetoed by user):
+
+1. **CSV "basic import" scope** → FR-2.6 Phase 1 subset note in `02-product/feature-requirements.md`
+2. **Cashier permission ceiling** (10% discount; Owner PIN escalation for refunds/voids/overrides) → FR-5.2 Phase 1 note
+3. **Local order retention 60 days; POS refunds are same-register only** → `03-architecture/offline-sync-strategy.md`
+4. **Browser `pos-web` printing is best-effort** (ESC/POS = Electron/RN only) → offline-sync-strategy browser caveat
+5. **Object storage dev = MinIO** (S3-compatible adapter; prod provider at deploy) → tech-stack
+6. **Email dev = Mailpit; QR receipt page = admin app `/r/<order-ulid>`** → tech-stack
+
+Phase 0 carry-over (open, user-blocked): hosted deploy of API/admin/Storybook (credentials pending) and interactive Electron print / Expo scan verification.
+
 ## Mockup gate (before implementation)
 
 POS-01, 02, 05, 06, 07, 08, 10, 12, 13, 14 · ADM-01, 03, 04, 05, 11, 16, 17 (POS-03/04 already approved in Phase 0).
+
+**Gate cleared 2026-07-10** — all Phase 1 screens mocked and approved; statuses in `04-design/screen-inventory.md`. Implementation may begin.
 
 ## Workstreams
 

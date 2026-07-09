@@ -61,6 +61,10 @@ POST /sync/batches
 - Catalog staleness banner after 24h offline ("Prices last updated …")
 - If the device is offline > 30 days, require re-bootstrap before selling (staleness risk exceeds usefulness)
 
+## Local order retention & POS refund scope (Phase 1 decision, 2026-07-09)
+
+Registers keep their own completed orders in local SQLite for **60 days** (orders still sync up as facts; the local copy is what POS-07 order lookup and POS-08 refunds read). Phase 1 refunds therefore operate on **same-register local history only**; cross-register/server-side order lookup from the POS comes later (admin can refund any synced order via ADM-11 from Phase 1). Purge of >60-day orders runs at shift close.
+
 ## Register activation & trust
 
 - Admin generates a one-time activation code per register → device exchanges it for a device token (scoped to store + register, revocable in admin)
@@ -70,6 +74,8 @@ POST /sync/batches
 ## Browser POS caveat
 
 `pos-web` in a plain browser uses wa-sqlite/OPFS where available; where storage is unreliable, browser mode declares itself **online-preferred** (still queues briefly via IndexedDB but warns it's not certified for extended offline). Certified offline = desktop (Electron) and mobile (RN). Marketing must reflect this honestly.
+
+Receipt printing follows the same split (Phase 1 decision, 2026-07-09): ESC/POS printing is supported on desktop (Electron) and mobile (RN) only; browser `pos-web` offers email + QR receipts and the native browser print dialog as best-effort.
 
 ## Testing this (see testing-strategy.md)
 

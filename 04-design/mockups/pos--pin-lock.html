@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>POS-02 PIN lock — RetailOS mockup</title>
+<style>
+  /* ===== Counter design tokens — keep in sync with 04-design/design-system.md ===== */
+  :root {
+    --color-primary: #1A4D2E;
+    --color-primary-hover: #143D24;
+    --color-accent: #F5A623;
+    --color-success: #1E8E3E;
+    --color-warning: #F29900;
+    --color-danger: #D93025;
+    --color-bg: #F7F8F7;
+    --color-surface: #FFFFFF;
+    --color-ink: #1C1F1D;
+    --color-ink-muted: #5C6660;
+    --color-border: #E2E6E3;
+    --radius: 8px;
+    --radius-card: 12px;
+    --shadow-card: 0 1px 3px rgba(28, 31, 29, 0.10);
+    --shadow-overlay: 0 8px 24px rgba(28, 31, 29, 0.18);
+    --font-ui: "Inter", system-ui, -apple-system, sans-serif;
+    --font-money: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  }
+  [data-theme="dark"] {
+    --color-primary: #5CB584; --color-primary-hover: #6FC494; --color-accent: #F5B84D;
+    --color-success: #4CC272; --color-warning: #F5A623; --color-danger: #F0655A;
+    --color-bg: #121513; --color-surface: #1C201D; --color-ink: #E8ECE9;
+    --color-ink-muted: #98A29C; --color-border: #2B302D;
+  }
+
+  * { box-sizing: border-box; margin: 0; }
+  body { background: #DDE1DE; font-family: var(--font-ui); color: var(--color-ink); padding: 24px; }
+
+  .canvas-label { max-width: 1280px; margin: 32px auto 8px; font-size: 14px; color: #444; }
+  .canvas { width: 1280px; height: 800px; margin: 0 auto; background: var(--color-bg);
+    border-radius: 4px; overflow: hidden; display: flex; flex-direction: column;
+    box-shadow: var(--shadow-overlay); }
+  .note { max-width: 1280px; margin: 8px auto 0; font-size: 13px; color: #555; }
+
+  .topbar { height: 56px; display: flex; align-items: center; gap: 16px; padding: 0 24px; flex: none; }
+  .store-id { font-size: 18px; font-weight: 600; }
+  .store-id small { display: block; font-size: 12px; color: var(--color-ink-muted); font-weight: 400; }
+  .sync-pill { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 14px;
+    padding: 8px 14px; border-radius: 999px; font-weight: 500; }
+  .sync-pill .dot { width: 10px; height: 10px; border-radius: 999px; }
+  .sync-ok { background: #E7F3EA; color: var(--color-success); }
+  .sync-ok .dot { background: var(--color-success); }
+  .sync-off { background: #FDF3E3; color: #9A6200; }
+  .sync-off .dot { background: var(--color-warning); }
+
+  .main { flex: 1; display: flex; align-items: center; justify-content: center; gap: 72px; }
+
+  /* Staff picker */
+  .staff-col { width: 360px; }
+  .staff-col h2 { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 16px; }
+  .staff { display: flex; align-items: center; gap: 14px; padding: 12px; border-radius: var(--radius-card);
+    border: 2px solid transparent; }
+  .staff.selected { border-color: var(--color-primary); background: var(--color-surface); box-shadow: var(--shadow-card); }
+  .staff .avatar { width: 56px; height: 56px; border-radius: 999px; background: var(--color-primary); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 600; flex: none; }
+  .staff:nth-child(3) .avatar { background: #7A5C2E; }
+  .staff:nth-child(4) .avatar { background: #2E5C7A; }
+  .staff .name { font-size: 18px; font-weight: 500; }
+  .staff .role { font-size: 14px; color: var(--color-ink-muted); }
+  .staff.disabled { opacity: .5; }
+  .staff.disabled .avatar { background: var(--color-ink-muted); }
+
+  /* PIN pad */
+  .pin-col { width: 360px; text-align: center; }
+  .pin-dots { display: flex; gap: 16px; justify-content: center; margin-bottom: 8px; height: 24px; }
+  .pin-dots .d { width: 18px; height: 18px; border-radius: 999px; border: 2px solid var(--color-border); background: var(--color-surface); }
+  .pin-dots .d.on { background: var(--color-primary); border-color: var(--color-primary); }
+  .pin-dots.error .d.on { background: var(--color-danger); border-color: var(--color-danger); }
+  .pin-hint { font-size: 14px; color: var(--color-ink-muted); margin-bottom: 20px; }
+  .pin-error { font-size: 16px; font-weight: 500; color: var(--color-danger); margin-bottom: 20px; }
+  .pad { display: grid; grid-template-columns: repeat(3, 104px); grid-auto-rows: 72px; gap: 12px; justify-content: center; }
+  .key { border: 1px solid var(--color-border); border-radius: var(--radius-card); background: var(--color-surface);
+    font-size: 26px; font-weight: 500; font-family: var(--font-ui); color: var(--color-ink); box-shadow: var(--shadow-card); }
+  .key.fn { font-size: 17px; color: var(--color-ink-muted); box-shadow: none; background: transparent; border-color: transparent; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     SECTION 1 — Primary state: staff selected, PIN in progress
+     Canvas: POS desktop/tablet landscape 1280×800
+============================================================ -->
+<p class="canvas-label"><strong>POS-02 PIN lock — primary state</strong> (online · staff selected · 2 of 4 digits entered)</p>
+<div class="canvas">
+  <div class="topbar">
+    <div class="store-id">Bahay Kubo Grocers<small>Register 2 · Poblacion branch</small></div>
+    <div class="sync-pill sync-ok"><span class="dot"></span>Synced · just now</div>
+  </div>
+  <div class="main">
+    <div class="staff-col">
+      <h2>Who's selling?</h2>
+      <div class="staff selected"><span class="avatar">MR</span><span><span class="name">Marites Reyes</span><br /><span class="role">Cashier</span></span></div>
+      <div class="staff"><span class="avatar">JD</span><span><span class="name">Jun dela Cruz</span><br /><span class="role">Owner</span></span></div>
+      <div class="staff"><span class="avatar">AL</span><span><span class="name">Ana Lim</span><br /><span class="role">Cashier</span></span></div>
+    </div>
+    <div class="pin-col">
+      <div class="pin-dots"><span class="d on"></span><span class="d on"></span><span class="d"></span><span class="d"></span></div>
+      <div class="pin-hint">Enter your 4-digit PIN</div>
+      <div class="pad">
+        <button class="key">1</button><button class="key">2</button><button class="key">3</button>
+        <button class="key">4</button><button class="key">5</button><button class="key">6</button>
+        <button class="key">7</button><button class="key">8</button><button class="key">9</button>
+        <button class="key fn">Clear</button><button class="key">0</button><button class="key fn">⌫</button>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="note">PIN verifies against the locally synced <code>pin_hash</code> (argon2id) — the lock works fully offline. Auto-unlock on 4th digit for 4-digit PINs (no confirm tap on the sale path). Physical keyboard digits work identically (keyboard-first rule). Auto-lock returns here after inactivity; the in-progress cart is untouched behind the lock.</p>
+
+<!-- ============================================================
+     SECTION 2 — Non-happy states: wrong PIN + offline + deactivated staff
+============================================================ -->
+<p class="canvas-label"><strong>POS-02 PIN lock — error states</strong> (offline · wrong PIN · one staff deactivated by delta sync)</p>
+<div class="canvas">
+  <div class="topbar">
+    <div class="store-id">Bahay Kubo Grocers<small>Register 2 · Poblacion branch</small></div>
+    <div class="sync-pill sync-off"><span class="dot"></span>Offline · 3 sales queued</div>
+  </div>
+  <div class="main">
+    <div class="staff-col">
+      <h2>Who's selling?</h2>
+      <div class="staff selected"><span class="avatar">MR</span><span><span class="name">Marites Reyes</span><br /><span class="role">Cashier</span></span></div>
+      <div class="staff"><span class="avatar">JD</span><span><span class="name">Jun dela Cruz</span><br /><span class="role">Owner</span></span></div>
+      <div class="staff disabled"><span class="avatar">AL</span><span><span class="name">Ana Lim</span><br /><span class="role">Deactivated — see Admin → Staff</span></span></div>
+    </div>
+    <div class="pin-col">
+      <div class="pin-dots error"><span class="d on"></span><span class="d on"></span><span class="d on"></span><span class="d on"></span></div>
+      <div class="pin-error">Wrong PIN — 2 tries left before a 60-second wait</div>
+      <div class="pad">
+        <button class="key">1</button><button class="key">2</button><button class="key">3</button>
+        <button class="key">4</button><button class="key">5</button><button class="key">6</button>
+        <button class="key">7</button><button class="key">8</button><button class="key">9</button>
+        <button class="key fn">Clear</button><button class="key">0</button><button class="key fn">⌫</button>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="note">Wrong PIN: dots flash danger + shake (120ms, respects reduced-motion); throttling (3 tries → 60s cooldown) rather than lockout — a register mid-rush must never be bricked. Deactivated staff stay visible but disabled with a pointer to Admin (conflict rule #5: deactivation applies on delta receipt). Offline pill carries the queued count even on the lock screen.</p>
+
+</body>
+</html>

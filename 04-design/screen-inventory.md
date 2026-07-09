@@ -56,7 +56,26 @@ Maintain this table as mockups are produced/approved:
 
 | Screen                   | Mockup file                     | Status                |
 | ------------------------ | ------------------------------- | --------------------- |
-| POS-03                   | `mockups/pos--sell.html`        | ☑ approved 2026-07-09 |
-| POS-04                   | `mockups/pos--payment.html`     | ☑ approved 2026-07-09 |
-| ADM-02                   | `mockups/admin--dashboard.html` | ☑ approved 2026-07-09 |
-| _(add rows as produced)_ |                                 |                       |
+| POS-03                   | `mockups/pos--sell.html`           | ☑ approved 2026-07-09 |
+| POS-04                   | `mockups/pos--payment.html`        | ☑ approved 2026-07-09 |
+| ADM-02                   | `mockups/admin--dashboard.html`    | ☑ approved 2026-07-09 |
+| POS-01                   | `mockups/pos--activation.html`     | ☑ approved 2026-07-09 |
+| POS-02                   | `mockups/pos--pin-lock.html`       | ☑ approved 2026-07-09 |
+| POS-05                   | `mockups/pos--receipt-done.html`   | ☑ approved 2026-07-09 |
+| POS-13                   | `mockups/pos--custom-sale.html`    | ☑ approved 2026-07-09 |
+| POS-14                   | `mockups/pos--discount-sheet.html` | ☑ approved 2026-07-09 |
+| POS-06                   | `mockups/pos--parked-carts.html`   | ☑ approved 2026-07-10 |
+| POS-07                   | `mockups/pos--orders.html`         | ☑ approved 2026-07-10 |
+| POS-08                   | `mockups/pos--refund.html`         | ☑ approved 2026-07-10 |
+| POS-10                   | `mockups/pos--shift.html`          | ☑ approved 2026-07-10 |
+| POS-12                   | `mockups/pos--settings.html`       | ☑ approved 2026-07-10 |
+| ADM-03                   | `mockups/admin--products.html`     | ☑ approved 2026-07-10 |
+| ADM-04                   | `mockups/admin--product-editor.html` | ☑ approved 2026-07-10 |
+| ADM-05                   | `mockups/admin--categories.html`   | ☑ approved 2026-07-10 |
+| ADM-01                   | `mockups/admin--signup-onboarding.html` | ☑ approved 2026-07-10 |
+| ADM-11                   | `mockups/admin--orders.html`       | ☑ approved 2026-07-10 |
+| ADM-16                   | `mockups/admin--locations-registers.html` | ☑ approved 2026-07-10 |
+| ADM-17                   | `mockups/admin--settings-taxes-tenders-receipt.html` | ☑ approved 2026-07-10 |
+| _(add rows as produced)_ |                                    |                       |
+
+2026-07-10: all previously approved mockups (POS-01…05, POS-13, POS-14, ADM-02) retrofitted to the frontend-design polish pass — Lucide inline SVG icons replacing emoji, eyebrow labels, mono/tabular figures. Layouts unchanged; approvals stand.

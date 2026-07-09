@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>POS-10 Shift open/close — RetailOS mockup</title>
+<style>
+  /* ===== Counter design tokens — keep in sync with 04-design/design-system.md ===== */
+  :root {
+    --color-primary: #1A4D2E;
+    --color-primary-hover: #143D24;
+    --color-accent: #F5A623;
+    --color-success: #1E8E3E;
+    --color-warning: #F29900;
+    --color-danger: #D93025;
+    --color-bg: #F7F8F7;
+    --color-surface: #FFFFFF;
+    --color-ink: #1C1F1D;
+    --color-ink-muted: #5C6660;
+    --color-border: #E2E6E3;
+    --radius: 8px;
+    --radius-card: 12px;
+    --shadow-card: 0 1px 3px rgba(28, 31, 29, 0.10);
+    --shadow-overlay: 0 8px 24px rgba(28, 31, 29, 0.18);
+    --font-ui: "Inter", system-ui, -apple-system, sans-serif;
+    --font-money: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  }
+  [data-theme="dark"] {
+    --color-primary: #5CB584; --color-primary-hover: #6FC494; --color-accent: #F5B84D;
+    --color-success: #4CC272; --color-warning: #F5A623; --color-danger: #F0655A;
+    --color-bg: #121513; --color-surface: #1C201D; --color-ink: #E8ECE9;
+    --color-ink-muted: #98A29C; --color-border: #2B302D;
+  }
+
+  * { box-sizing: border-box; margin: 0; }
+  body { background: #DDE1DE; font-family: var(--font-ui); color: var(--color-ink); padding: 24px; }
+  .money { font-family: var(--font-money); font-variant-numeric: tabular-nums; text-align: right; }
+  svg.ic { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.75;
+    stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+  .canvas-label { max-width: 1280px; margin: 32px auto 8px; font-size: 14px; color: #444; }
+  .canvas { width: 1280px; height: 800px; margin: 0 auto; background: var(--color-bg);
+    border-radius: 4px; overflow: hidden; display: flex; flex-direction: column; box-shadow: var(--shadow-overlay); }
+  .note { max-width: 1280px; margin: 8px auto 0; font-size: 13px; color: #555; }
+
+  .topbar { height: 56px; background: var(--color-surface); border-bottom: 1px solid var(--color-border);
+    display: flex; align-items: center; gap: 16px; padding: 0 16px; flex: none; }
+  .title { font-size: 18px; font-weight: 600; }
+  .title small { display: block; font-size: 12px; color: var(--color-ink-muted); font-weight: 400; }
+  .sync-pill { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 14px;
+    padding: 8px 14px; border-radius: 999px; font-weight: 500; }
+  .sync-pill .dot { width: 10px; height: 10px; border-radius: 999px; }
+  .sync-ok { background: #E7F3EA; color: var(--color-success); }
+  .sync-ok .dot { background: var(--color-success); }
+  .staff-chip { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500;
+    padding: 6px 12px 6px 6px; border: 1px solid var(--color-border); border-radius: 999px; }
+  .avatar { width: 32px; height: 32px; border-radius: 999px; background: var(--color-primary); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; }
+
+  .main { flex: 1; display: flex; align-items: center; justify-content: center; gap: 56px; }
+
+  .card { width: 500px; background: var(--color-surface); border: 1px solid var(--color-border);
+    border-radius: var(--radius-card); box-shadow: var(--shadow-card); padding: 32px; }
+  .card h1 { font-size: 24px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 6px; }
+  .card .sub { font-size: 15px; color: var(--color-ink-muted); margin-bottom: 24px; line-height: 1.5; }
+  label { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--color-ink-muted); display: block; margin-bottom: 6px; }
+  .amount-display { height: 76px; border: 2px solid var(--color-primary); border-radius: var(--radius);
+    background: var(--color-bg); font-size: 36px; font-weight: 600; display: flex; align-items: center;
+    justify-content: flex-end; padding: 0 18px; box-shadow: 0 0 0 3px rgba(26, 77, 46, 0.15); margin-bottom: 16px; }
+  .denom-hint { font-size: 13px; color: var(--color-ink-muted); margin-bottom: 6px; }
+  .denoms { display: flex; gap: 8px; flex-wrap: wrap; }
+  .denom { height: 48px; padding: 0 16px; border: 1px solid var(--color-border); border-radius: 999px;
+    background: var(--color-surface); font-size: 15px; font-family: var(--font-money);
+    font-variant-numeric: tabular-nums; color: var(--color-ink); }
+  .btn-primary { width: 100%; height: 60px; border: 0; border-radius: var(--radius);
+    background: var(--color-primary); color: #fff; font-size: 19px; font-weight: 600; font-family: var(--font-ui); margin-top: 24px; }
+  .btn-primary:hover { background: var(--color-primary-hover); }
+  .btn-primary .money { display: inline; }
+
+  .pad { display: grid; grid-template-columns: repeat(3, 104px); grid-auto-rows: 72px; gap: 12px; align-content: center; }
+  .key { border: 1px solid var(--color-border); border-radius: var(--radius-card); background: var(--color-surface);
+    font-size: 26px; font-weight: 500; font-family: var(--font-ui); color: var(--color-ink); box-shadow: var(--shadow-card); }
+  .key.fn { font-size: 17px; color: var(--color-ink-muted); }
+
+  /* Close side */
+  .zrows { font-size: 15px; }
+  .zrow { display: flex; justify-content: space-between; gap: 16px; padding: 6px 0; color: var(--color-ink-muted); }
+  .zrow b { color: var(--color-ink); font-weight: 500; }
+  .zrow.line { border-top: 1px solid var(--color-border); margin-top: 6px; padding-top: 12px; }
+  .zrow.line span:first-child { font-weight: 600; color: var(--color-ink); }
+  .reveal { border: 1px solid #F3C1BD; background: #FCEBEA; border-radius: var(--radius);
+    padding: 14px 16px; margin: 16px 0 8px; }
+  .reveal .t { display: flex; justify-content: space-between; font-size: 18px; font-weight: 600; color: var(--color-danger); }
+  .reveal .h { font-size: 13.5px; color: #8C1D14; margin-top: 6px; line-height: 1.5; }
+  .blind-note { font-size: 13.5px; color: var(--color-ink-muted); margin-bottom: 16px; line-height: 1.5; }
+  .btn-close-shift { width: 100%; height: 60px; border: 0; border-radius: var(--radius);
+    background: var(--color-primary); color: #fff; font-size: 19px; font-weight: 600; font-family: var(--font-ui); margin-top: 8px;
+    display: flex; align-items: center; justify-content: center; gap: 10px; }
+  .btn-ghost-sm { width: 100%; height: 48px; border: 1px solid var(--color-border); border-radius: var(--radius);
+    background: var(--color-surface); font-size: 16px; font-family: var(--font-ui); color: var(--color-ink); margin-top: 12px; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     SECTION 1 — Primary state: opening the shift with float count
+     Canvas: POS desktop/tablet landscape 1280×800
+============================================================ -->
+<p class="canvas-label"><strong>POS-10 Shift open — primary state</strong> (morning · counting the float before first sale)</p>
+<div class="canvas">
+  <div class="topbar">
+    <div class="title">Open shift<small>Register 2 · Poblacion branch · Wed 09 Jul, 08:02</small></div>
+    <div class="sync-pill sync-ok"><span class="dot"></span>Synced · just now</div>
+    <div class="staff-chip"><span class="avatar">MR</span>Marites R.</div>
+  </div>
+  <div class="main">
+    <div class="card">
+      <h1>Count the float</h1>
+      <p class="sub">Cash in the drawer before selling starts. Yesterday's close left <strong>₱2,000.00</strong> as float.</p>
+      <label>Float amount</label>
+      <div class="amount-display money">₱2,000.00</div>
+      <div class="denom-hint">Tap to add — counting by denomination:</div>
+      <div class="denoms">
+        <button class="denom">+1000</button>
+        <button class="denom">+500</button>
+        <button class="denom">+100</button>
+        <button class="denom">+50</button>
+        <button class="denom">+20</button>
+        <button class="denom">+10</button>
+      </div>
+      <button class="btn-primary">Open shift with <span class="money">₱2,000.00</span></button>
+    </div>
+    <div class="pad">
+      <button class="key">1</button><button class="key">2</button><button class="key">3</button>
+      <button class="key">4</button><button class="key">5</button><button class="key">6</button>
+      <button class="key">7</button><button class="key">8</button><button class="key">9</button>
+      <button class="key fn">00</button><button class="key">0</button><button class="key fn">⌫</button>
+    </div>
+  </div>
+</div>
+<p class="note">One active shift per register (FR-6.1); the Sell screen is locked behind this until the float is counted. Denomination chips accumulate (+500 twice = ₱1,000) for people who count bills in stacks; the NumberPad types a total directly for those who don't. Yesterday's float is a hint, never prefilled — the point is a real count. Chips and amounts render in the mono face, tabular.</p>
+
+<!-- ============================================================
+     SECTION 2 — Close: blind count done, over/short revealed (short)
+============================================================ -->
+<p class="canvas-label"><strong>POS-10 Shift close — over/short reveal</strong> (blind count entered · drawer short ₱120 · Z-report next)</p>
+<div class="canvas">
+  <div class="topbar">
+    <div class="title">Close shift<small>Register 2 · opened 08:02 by Marites R. · closing 20:14</small></div>
+    <div class="sync-pill sync-ok"><span class="dot"></span>Synced · just now</div>
+    <div class="staff-chip"><span class="avatar">MR</span>Marites R.</div>
+  </div>
+  <div class="main">
+    <div class="card">
+      <h1>Drawer count</h1>
+      <p class="blind-note">Marites counted the drawer <em>blind</em> — expected cash stayed hidden until the count was submitted. Over/short is visible now because Owner Jun approved the reveal.</p>
+      <div class="zrows">
+        <div class="zrow"><span>Opening float</span><b class="money">₱2,000.00</b></div>
+        <div class="zrow"><span>Cash sales (41 of 47 orders)</span><b class="money">₱18,540.00</b></div>
+        <div class="zrow"><span>Cash refunds</span><b class="money">−₱165.00</b></div>
+        <div class="zrow"><span>Paid out — LPG supplier COD (16:40)</span><b class="money">−₱500.00</b></div>
+        <div class="zrow line"><span>Expected in drawer</span><b class="money">₱19,875.00</b></div>
+        <div class="zrow"><span>Counted (blind)</span><b class="money">₱19,755.00</b></div>
+      </div>
+      <div class="reveal">
+        <div class="t"><span>Short</span><span class="money">−₱120.00</span></div>
+        <div class="h">Recorded on the shift with both counts. Recount the drawer or close as-is — shortages appear on the Z-report and in Admin.</div>
+      </div>
+      <button class="btn-ghost-sm">Recount drawer</button>
+      <button class="btn-close-shift"><svg class="ic" viewBox="0 0 24 24"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Close shift &amp; print Z-report</button>
+    </div>
+    <div class="pad" style="opacity:.4">
+      <button class="key">1</button><button class="key">2</button><button class="key">3</button>
+      <button class="key">4</button><button class="key">5</button><button class="key">6</button>
+      <button class="key">7</button><button class="key">8</button><button class="key">9</button>
+      <button class="key fn">00</button><button class="key">0</button><button class="key fn">⌫</button>
+    </div>
+  </div>
+</div>
+<p class="note">Blind close per FR-6.1: the cashier submits a count without seeing the expected figure; the over/short reveal is permission-gated (Owner sees it; a Cashier closing alone gets "recorded — see your manager"). Every number traces: 2,000 + 18,540 − 165 − 500 = 19,875 expected vs 19,755 counted → −120, all tabular mono so the columns align. Closing prints the Z (FR-6.2: gross, tenders, discounts, refunds, per-staff) and the shift becomes an immutable ⬆ fact. Non-cash tenders don't touch drawer math — the Z carries the full tender breakdown.</p>
+
+</body>
+</html>

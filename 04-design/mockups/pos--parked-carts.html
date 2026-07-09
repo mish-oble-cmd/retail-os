@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>POS-06 Parked carts — RetailOS mockup</title>
+<style>
+  /* ===== Counter design tokens — keep in sync with 04-design/design-system.md ===== */
+  :root {
+    --color-primary: #1A4D2E;
+    --color-primary-hover: #143D24;
+    --color-accent: #F5A623;
+    --color-success: #1E8E3E;
+    --color-warning: #F29900;
+    --color-danger: #D93025;
+    --color-bg: #F7F8F7;
+    --color-surface: #FFFFFF;
+    --color-ink: #1C1F1D;
+    --color-ink-muted: #5C6660;
+    --color-border: #E2E6E3;
+    --radius: 8px;
+    --radius-card: 12px;
+    --shadow-card: 0 1px 3px rgba(28, 31, 29, 0.10);
+    --shadow-overlay: 0 8px 24px rgba(28, 31, 29, 0.18);
+    --font-ui: "Inter", system-ui, -apple-system, sans-serif;
+    --font-money: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  }
+  [data-theme="dark"] {
+    --color-primary: #5CB584; --color-primary-hover: #6FC494; --color-accent: #F5B84D;
+    --color-success: #4CC272; --color-warning: #F5A623; --color-danger: #F0655A;
+    --color-bg: #121513; --color-surface: #1C201D; --color-ink: #E8ECE9;
+    --color-ink-muted: #98A29C; --color-border: #2B302D;
+  }
+
+  * { box-sizing: border-box; margin: 0; }
+  body { background: #DDE1DE; font-family: var(--font-ui); color: var(--color-ink); padding: 24px; }
+  .money { font-family: var(--font-money); font-variant-numeric: tabular-nums; text-align: right; }
+  svg.ic { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.75;
+    stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  svg.ic.sm { width: 20px; height: 20px; }
+
+  .canvas-label { max-width: 1280px; margin: 32px auto 8px; font-size: 14px; color: #444; }
+  .canvas { width: 1280px; height: 800px; margin: 0 auto; background: var(--color-bg);
+    border-radius: 4px; overflow: hidden; position: relative; box-shadow: var(--shadow-overlay); }
+  .note { max-width: 1280px; margin: 8px auto 0; font-size: 13px; color: #555; }
+
+  /* Dimmed sell screen behind the sheet */
+  .backdrop { position: absolute; inset: 0; background: rgba(28, 31, 29, 0.45); z-index: 1; }
+  .ghost { position: absolute; inset: 0; padding: 16px; filter: blur(1px); }
+  .ghost .bar { height: 56px; background: var(--color-surface); border-radius: var(--radius); margin-bottom: 12px; }
+  .ghost .row { display: flex; gap: 10px; }
+  .ghost .tile { width: 168px; height: 108px; background: var(--color-surface); border-radius: var(--radius-card); }
+
+  /* Sheet */
+  .sheet { position: absolute; z-index: 2; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 760px; background: var(--color-surface); border-radius: var(--radius-card);
+    box-shadow: var(--shadow-overlay); padding: 32px; }
+  .eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--color-ink-muted); margin-bottom: 4px; }
+  .sheet h1 { font-size: 24px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 24px; }
+  .sheet .close { position: absolute; top: 24px; right: 24px; width: 48px; height: 48px;
+    border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface);
+    color: var(--color-ink-muted); display: flex; align-items: center; justify-content: center; }
+
+  .conflict-hint { border: 1px solid #F2DDB4; background: #FDF3E3; color: #7A4E00; border-radius: var(--radius);
+    font-size: 14px; padding: 12px 16px; margin-bottom: 16px; line-height: 1.5; }
+
+  .cartrow { display: flex; align-items: center; gap: 16px; padding: 16px;
+    border: 1px solid var(--color-border); border-radius: var(--radius-card); margin-bottom: 12px;
+    background: var(--color-surface); box-shadow: var(--shadow-card); }
+  .cartrow.stale { border-color: var(--color-warning); }
+  .cartrow .who { flex: 1; min-width: 0; }
+  .cartrow .name { font-size: 18px; font-weight: 600; }
+  .cartrow .meta { font-size: 14px; color: var(--color-ink-muted); margin-top: 4px; }
+  .cartrow .meta .old { color: #9A6200; font-weight: 500; }
+  .cartrow .total { font-size: 20px; font-weight: 600; width: 132px; }
+  .btn-retrieve { height: 56px; padding: 0 24px; border: 0; border-radius: var(--radius);
+    background: var(--color-primary); color: #fff; font-size: 18px; font-weight: 600; font-family: var(--font-ui); }
+  .btn-retrieve:hover { background: var(--color-primary-hover); }
+  .btn-discard { height: 56px; width: 56px; border: 1px solid var(--color-border); border-radius: var(--radius);
+    background: var(--color-surface); color: var(--color-danger); margin-left: 8px;
+    display: flex; align-items: center; justify-content: center; }
+
+  .empty { text-align: center; padding: 56px 24px 40px; color: var(--color-ink-muted); }
+  .empty svg.ic { width: 48px; height: 48px; stroke-width: 1.25; margin-bottom: 16px; color: var(--color-ink-muted); }
+  .empty .title { font-size: 20px; font-weight: 600; color: var(--color-ink); margin-bottom: 8px; }
+  .empty .hint { font-size: 15px; max-width: 400px; margin: 0 auto; line-height: 1.6; }
+  .empty .cta { margin-top: 24px; height: 56px; padding: 0 28px; border: 0; border-radius: var(--radius);
+    background: var(--color-primary); color: #fff; font-size: 18px; font-weight: 600; font-family: var(--font-ui); }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     SECTION 1 — Primary state: three parked carts, one gone stale
+     Canvas: POS desktop/tablet landscape 1280×800 (sheet over dimmed Sell)
+============================================================ -->
+<p class="canvas-label"><strong>POS-06 Parked carts — primary state</strong> (3 parked · current cart will re-park on retrieve · one stale cart)</p>
+<div class="canvas">
+  <div class="ghost">
+    <div class="bar"></div>
+    <div class="row"><div class="tile"></div><div class="tile"></div><div class="tile"></div><div class="tile"></div></div>
+  </div>
+  <div class="backdrop"></div>
+  <div class="sheet">
+    <div class="eyebrow">Register 2 · saved on this device, survives restarts</div>
+    <h1>Parked carts</h1>
+    <button class="close" aria-label="Close"><svg class="ic sm" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+    <div class="conflict-hint">You have 2 items in the current cart. Retrieving a parked cart parks the current one as “Unnamed — 14:32”.</div>
+    <div class="cartrow">
+      <div class="who">
+        <div class="name">Ate Linda — balikbayan box</div>
+        <div class="meta">6 items · parked 12 min ago by Marites R.</div>
+      </div>
+      <div class="total money">₱2,340.00</div>
+      <button class="btn-retrieve">Retrieve</button>
+      <button class="btn-discard" aria-label="Discard cart"><svg class="ic" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>
+    </div>
+    <div class="cartrow">
+      <div class="who">
+        <div class="name">Tricycle driver — softdrinks</div>
+        <div class="meta">2 items · parked 25 min ago by Marites R.</div>
+      </div>
+      <div class="total money">₱130.00</div>
+      <button class="btn-retrieve">Retrieve</button>
+      <button class="btn-discard" aria-label="Discard cart"><svg class="ic" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>
+    </div>
+    <div class="cartrow stale">
+      <div class="who">
+        <div class="name">Sir w/ GCash question</div>
+        <div class="meta"><span class="old">Parked yesterday 17:52</span> · 4 items · by Ana L. · prices re-check on retrieve</div>
+      </div>
+      <div class="total money">₱862.00</div>
+      <button class="btn-retrieve">Retrieve</button>
+      <button class="btn-discard" aria-label="Discard cart"><svg class="ic" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>
+    </div>
+  </div>
+</div>
+<p class="note">Named carts with age + who parked them (attribution). Retrieve is the primary action per row; discard is danger-styled (Lucide trash, never icon-only in final build — tooltip + ConfirmDestructive), separated from Retrieve. The stale overnight cart is flagged warning and re-prices against the current catalog on retrieval, surfacing changes instead of silently honoring yesterday's prices. The current-cart collision rule is stated before it happens.</p>
+
+<!-- ============================================================
+     SECTION 2 — Empty state
+============================================================ -->
+<p class="canvas-label"><strong>POS-06 Parked carts — empty state</strong></p>
+<div class="canvas">
+  <div class="ghost">
+    <div class="bar"></div>
+    <div class="row"><div class="tile"></div><div class="tile"></div><div class="tile"></div><div class="tile"></div></div>
+  </div>
+  <div class="backdrop"></div>
+  <div class="sheet">
+    <div class="eyebrow">Register 2</div>
+    <h1>Parked carts</h1>
+    <button class="close" aria-label="Close"><svg class="ic sm" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+    <div class="empty">
+      <svg class="ic" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+      <div class="title">No parked carts</div>
+      <div class="hint">Park a cart when a customer steps away — tap <strong>Park cart</strong> on the Sell screen. It stays on this register, even through a power cut.</div>
+      <button class="cta">Back to selling</button>
+    </div>
+  </div>
+</div>
+<p class="note">Empty state teaches the feature (EmptyState-with-CTA pattern) — parking is discoverable the first time a cashier looks for it. Iconography is now inline Lucide (stroke 1.75) per the design system; the register context moved to a 12px uppercase eyebrow so the sheet title stands alone.</p>
+
+</body>
+</html>

@@ -1,9 +1,13 @@
+import { join } from 'node:path';
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { NetworkPrinterPort, printTestReceipt } from './printing/escpos';
 
 /**
  * Desktop shell (AD-5): wraps the pos-web build. Phase 0 proves the three
  * risky integrations — window shell, ESC/POS printing, auto-update wiring.
+ *
+ * Packaged builds ship the pos-web bundle as an extraResource (see
+ * electron-builder.json5); dev loads the Vite server.
  */
 
 const POS_WEB_URL = process.env['POS_WEB_URL'] ?? 'http://localhost:5173';
@@ -15,7 +19,9 @@ function wireAutoUpdater(): void {
   if (!app.isPackaged) return;
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { autoUpdater } = require('electron-updater') as typeof import('electron-updater');
-  void autoUpdater.checkForUpdatesAndNotify();
+  autoUpdater.checkForUpdatesAndNotify().catch(() => {
+    // no publish config yet (Phase 0) — never block launch on update checks
+  });
 }
 
 async function createWindow(): Promise<void> {
@@ -25,7 +31,11 @@ async function createWindow(): Promise<void> {
     fullscreenable: true,
     webPreferences: { contextIsolation: true, nodeIntegration: false },
   });
-  await window.loadURL(POS_WEB_URL);
+  if (app.isPackaged) {
+    await window.loadFile(join(process.resourcesPath, 'pos-web', 'index.html'));
+  } else {
+    await window.loadURL(POS_WEB_URL);
+  }
 }
 
 ipcMain.handle('print-test-receipt', async (_event, printerHost: string, printerPort?: number) => {

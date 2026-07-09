@@ -1,0 +1,25 @@
+{
+  productName: "RetailOS POS",
+  appId: "dev.retailos.pos.desktop",
+  directories: {
+    output: "dist-electron",
+    buildResources: "assets",
+  },
+  files: ["dist/**/*", "package.json"],
+  // The renderer is the pos-web Vite build, shipped beside the app code and
+  // loaded via process.resourcesPath (see src/main/main.ts).
+  extraResources: [{ from: "../pos-web/dist", to: "pos-web" }],
+  mac: {
+    target: ["dmg", "zip"],
+    category: "public.app-category.business",
+    // Phase 0: unsigned local builds (ad-hoc signature only). Developer ID
+    // signing + notarization land with real distribution (deployment-devops.md).
+    identity: null,
+  },
+  dmg: {
+    contents: [
+      { x: 110, y: 150, type: "file" },
+      { x: 240, y: 150, type: "link", path: "/Applications" },
+    ],
+  },
+}

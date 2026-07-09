@@ -10,3 +10,4 @@ coverage/
 *.tsbuildinfo
 .eslintcache
 storybook-static/
+dist-electron/

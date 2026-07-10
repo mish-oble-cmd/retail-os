@@ -8,6 +8,7 @@ Core entities, inspired by Shopify's proven object model (see `01-research/shopi
 - Every business table: `store_id` (tenant), `created_at`, `updated_at`; synced tables add `sync_rev` (server-assigned monotonic revision per store, drives delta sync).
 - Money: `*_amount` integer minor units; store has one `currency` (v1 single-currency per store).
 - Soft delete via `status`/`deleted_at` only where noted; sale facts are **immutable — corrections are new rows**.
+- **Intra-tenant FKs are composite** `(store_id, <entity>_id) REFERENCES parent(store_id, id)` (decided 2026-07-10): Postgres referential-integrity checks bypass RLS, so a single-column FK would let one tenant reference another tenant's row. Composite FKs make cross-tenant references impossible at the constraint level; every referenceable table carries a `UNIQUE (store_id, id)` constraint.
 
 ## Entity relationship overview
 
@@ -41,7 +42,7 @@ Store ─┬─ Location ─┬─ Register ─── Shift ─── ShiftEvent
 
 ### Catalog ⬇
 
-- **Product**: name, description, category_id, brand, images[], tax_category_id, status, has_variants, custom JSONB
+- **Product**: name, description, category_id, brand, images[], options JSONB (ordered option definitions, e.g. `[{"name":"Size","values":["S","M","L"]}]` — variants hold the chosen combination in `option_values`; added 2026-07-10 for the FR-2.2 matrix), tax_category_id, status, has_variants, custom JSONB
 - **Variant**: product_id, option_values JSONB, sku, price_amount, compare_at_amount?, cost_amount?, track_stock bool
 - **Barcode**: variant_id, code (unique per store) — multiple per variant
 - **Category**: parent_id (tree), name, sort

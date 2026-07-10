@@ -4,7 +4,7 @@ import { and, eq } from 'drizzle-orm';
 import { authenticator } from 'otplib';
 import { ulid } from 'ulid';
 import { DbService } from '../../db/db.service';
-import { roles, staff, stores } from '../../db/schema';
+import { roles, staff, stores, taxCategories, taxRates } from '../../db/schema';
 
 export interface SignupInput {
   email: string;
@@ -26,6 +26,16 @@ const ARGON2_OPTIONS: argon2.Options = {
   memoryCost: 19_456, // 19 MiB — OWASP-recommended argon2id baseline
   timeCost: 2,
   parallelism: 1,
+};
+
+/**
+ * Convenience default for the seeded "Standard" tax category; the onboarding
+ * wizard (FR-10.1) and ADM-17 let the owner change it. Rates stay fully
+ * per-store adjustable — this only picks a sensible starting point.
+ */
+const DEFAULT_TAX_BY_CURRENCY: Record<string, { name: string; rateBp: number }> = {
+  SGD: { name: 'GST 9%', rateBp: 900 },
+  PHP: { name: 'VAT 12%', rateBp: 1200 },
 };
 
 @Injectable()
@@ -72,6 +82,26 @@ export class IdentityService {
           email: input.email,
           passwordHash,
           roleId,
+        });
+        // Catalog needs a tax category to reference from the first product
+        // (products.tax_category_id NOT NULL); "Standard" + a currency-based
+        // starting rate, both editable in ADM-17.
+        const taxCategoryId = ulid();
+        const defaultRate = DEFAULT_TAX_BY_CURRENCY[input.currency] ?? {
+          name: 'No tax',
+          rateBp: 0,
+        };
+        await tx.insert(taxCategories).values({
+          id: taxCategoryId,
+          storeId,
+          name: 'Standard',
+        });
+        await tx.insert(taxRates).values({
+          id: ulid(),
+          storeId,
+          taxCategoryId,
+          name: defaultRate.name,
+          rateBp: defaultRate.rateBp,
         });
         return { staffId, storeId, name: input.email, email: input.email, roleName: 'Owner' };
       },

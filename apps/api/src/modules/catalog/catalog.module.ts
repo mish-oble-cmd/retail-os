@@ -5,6 +5,7 @@ import { CategoriesService } from './categories.service';
 import { ProductImportService } from './product-import.service';
 import { ProductsController } from './products.controller';
 import { ProductsService } from './products.service';
+import { TaxCategoriesController } from './tax-categories.controller';
 import { UploadsController } from './uploads.controller';
 import { UploadsService } from './uploads.service';
 import { VariantsController } from './variants.controller';
@@ -15,7 +16,13 @@ import { VariantsController } from './variants.controller';
  * never its internals or tables.
  */
 @Module({
-  controllers: [CategoriesController, ProductsController, VariantsController, UploadsController],
+  controllers: [
+    CategoriesController,
+    ProductsController,
+    VariantsController,
+    UploadsController,
+    TaxCategoriesController,
+  ],
   providers: [
     CategoriesService,
     ProductsService,

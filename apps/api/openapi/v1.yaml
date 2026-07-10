@@ -259,6 +259,16 @@ paths:
         PATCH /products/{id} images
       tags:
         - catalog
+  /api/v1/tax-categories:
+    get:
+      operationId: listTaxCategories
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      summary: Tax categories for pickers
+      tags:
+        - catalog
   /api/v1/locations:
     get:
       operationId: listLocations

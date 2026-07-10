@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   HttpCode,
   Param,
   Patch,
@@ -12,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
+import { z } from 'zod';
 import { parsePageRequest } from '../../common/pagination';
 import { requireSession } from '../../common/session';
 import {
@@ -21,12 +23,42 @@ import {
   ulidSchema,
   updateProductSchema,
 } from './dto';
+import { ProductImportService } from './product-import.service';
 import { ProductsService } from './products.service';
+
+/** Whole CSV file as text; ~5 MB comfortably covers the 200-row Phase 1 target. */
+const importBodySchema = z.object({ csv: z.string().min(1).max(5_000_000) });
 
 @ApiTags('catalog')
 @Controller('products')
 export class ProductsController {
-  constructor(private readonly products: ProductsService) {}
+  constructor(
+    private readonly products: ProductsService,
+    private readonly importer: ProductImportService,
+  ) {}
+
+  @Post('import')
+  @ApiOperation({
+    operationId: 'importProducts',
+    summary:
+      'CSV import, Phase 1 subset: fixed template, create-only; valid rows import, invalid rows return with row + reason',
+  })
+  async import(@Body() body: unknown, @Req() req: Request) {
+    const { storeId, staffId } = requireSession(req);
+    return this.importer.import(storeId, staffId, importBodySchema.parse(body).csv);
+  }
+
+  @Get('export')
+  @Header('Content-Type', 'text/csv; charset=utf-8')
+  @Header('Content-Disposition', 'attachment; filename="products.csv"')
+  @ApiOperation({
+    operationId: 'exportProducts',
+    summary: 'All non-archived products as CSV in the import template (re-imports cleanly)',
+  })
+  async export(@Req() req: Request) {
+    const { storeId } = requireSession(req);
+    return this.importer.export(storeId);
+  }
 
   @Get()
   @ApiOperation({

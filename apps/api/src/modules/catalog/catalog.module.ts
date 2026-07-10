@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { CategoriesController } from './categories.controller';
 import { CategoriesService } from './categories.service';
+import { ProductImportService } from './product-import.service';
 import { ProductsController } from './products.controller';
 import { ProductsService } from './products.service';
 import { VariantsController } from './variants.controller';
@@ -12,7 +13,7 @@ import { VariantsController } from './variants.controller';
  */
 @Module({
   controllers: [CategoriesController, ProductsController, VariantsController],
-  providers: [CategoriesService, ProductsService],
+  providers: [CategoriesService, ProductsService, ProductImportService],
   exports: [CategoriesService, ProductsService],
 })
 export class CatalogModule {}

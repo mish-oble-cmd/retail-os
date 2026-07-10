@@ -36,9 +36,11 @@ POS-01, 02, 05, 06, 07, 08, 10, 12, 13, 14 · ADM-01, 03, 04, 05, 11, 16, 17 (PO
 
 ## Workstreams
 
-### 1A Catalog (admin + API)
+### 1A Catalog (admin + API) — ✅ complete 2026-07-11
 
 Product/variant CRUD with options matrix, barcodes, images (S3 upload), categories; products list with search; per-location stock field (single location for now). Register grid-layout editor (ADM-16).
+
+_Shipped on `phase-1/catalog`: catalog/settings schema + RLS migrations, products/variants/barcodes/categories/tax-categories API, CSV import/export (FR-2.6 subset), MinIO presigned image upload, locations/registers + activation codes API, admin screens ADM-03/04/05/16, 76 API tests. Verified end-to-end against local Postgres (signup → product with variant matrix → mixed CSV import report → barcode search → activation code → grid layout). Found+fixed in verification: tenant wrapper now drops to `retailos_app` per transaction — dev superuser connections previously bypassed RLS._
 
 ### 1B POS data layer
 

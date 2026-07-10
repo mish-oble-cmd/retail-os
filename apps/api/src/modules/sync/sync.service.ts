@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { and, asc, eq, gt } from 'drizzle-orm';
 import { DbService } from '../../db/db.service';
 import {
   barcodes,
@@ -11,6 +11,7 @@ import {
   roles,
   staff,
   stores,
+  syncTombstones,
   taxCategories,
   taxRates,
   variants,
@@ -171,6 +172,35 @@ const STAFF_PROJECTION = {
   syncRev: staff.syncRev,
 };
 
+export type DownEntityType =
+  | 'store'
+  | 'role'
+  | 'staff'
+  | 'location'
+  | 'register'
+  | 'tax_category'
+  | 'tax_rate'
+  | 'category'
+  | 'product'
+  | 'variant'
+  | 'barcode'
+  | 'inventory_level'
+  | 'tombstone';
+
+export interface Change {
+  type: DownEntityType;
+  rev: number;
+  data: Row;
+}
+
+export interface ChangesPage {
+  /** ascending by rev */
+  changes: Change[];
+  /** resume cursor: last rev in the page, or the request's `since` when empty */
+  next_since: number;
+  has_more: boolean;
+}
+
 @Injectable()
 export class SyncService {
   constructor(private readonly db: DbService) {}
@@ -195,6 +225,117 @@ export class SyncService {
           barcodes: (await tx.select().from(barcodes)).map(barcodeDown),
           inventory_levels: (await tx.select().from(inventoryLevels)).map(inventoryLevelDown),
         },
+      };
+    });
+  }
+
+  /**
+   * Delta feed: everything above `since`, merged across tables, ascending by
+   * rev. Each table is read with limit+1 so has_more never lies even when a
+   * single table fills the page.
+   */
+  async changes(ctx: DeviceContext, since: number, limit = 500): Promise<ChangesPage> {
+    const cap = Math.min(Math.max(limit, 1), 500);
+    return this.db.tenants.forStore(ctx.storeId).tx(async (tx) => {
+      const probe = cap + 1;
+      const merged: Change[] = [];
+
+      const collect = async <T extends { syncRev: number }>(
+        type: DownEntityType,
+        rows: Promise<T[]>,
+        map: (row: T) => Row,
+      ) => {
+        for (const row of await rows) merged.push({ type, rev: row.syncRev, data: map(row) });
+      };
+
+      await collect(
+        'store',
+        tx.select().from(stores).where(and(eq(stores.id, ctx.storeId), gt(stores.syncRev, since))),
+        storeDown,
+      );
+      await collect(
+        'role',
+        tx.select().from(roles).where(gt(roles.syncRev, since)).orderBy(asc(roles.syncRev)).limit(probe),
+        roleDown,
+      );
+      await collect(
+        'staff',
+        tx.select(STAFF_PROJECTION).from(staff).where(gt(staff.syncRev, since)).orderBy(asc(staff.syncRev)).limit(probe),
+        staffDown,
+      );
+      await collect(
+        'location',
+        tx.select().from(locations).where(gt(locations.syncRev, since)).orderBy(asc(locations.syncRev)).limit(probe),
+        locationDown,
+      );
+      await collect(
+        'register',
+        tx.select().from(registers).where(gt(registers.syncRev, since)).orderBy(asc(registers.syncRev)).limit(probe),
+        registerDown,
+      );
+      await collect(
+        'tax_category',
+        tx
+          .select()
+          .from(taxCategories)
+          .where(gt(taxCategories.syncRev, since))
+          .orderBy(asc(taxCategories.syncRev))
+          .limit(probe),
+        taxCategoryDown,
+      );
+      await collect(
+        'tax_rate',
+        tx.select().from(taxRates).where(gt(taxRates.syncRev, since)).orderBy(asc(taxRates.syncRev)).limit(probe),
+        taxRateDown,
+      );
+      await collect(
+        'category',
+        tx.select().from(categories).where(gt(categories.syncRev, since)).orderBy(asc(categories.syncRev)).limit(probe),
+        categoryDown,
+      );
+      await collect(
+        'product',
+        tx.select().from(products).where(gt(products.syncRev, since)).orderBy(asc(products.syncRev)).limit(probe),
+        productDown,
+      );
+      await collect(
+        'variant',
+        tx.select().from(variants).where(gt(variants.syncRev, since)).orderBy(asc(variants.syncRev)).limit(probe),
+        variantDown,
+      );
+      await collect(
+        'barcode',
+        tx.select().from(barcodes).where(gt(barcodes.syncRev, since)).orderBy(asc(barcodes.syncRev)).limit(probe),
+        barcodeDown,
+      );
+      await collect(
+        'inventory_level',
+        tx
+          .select()
+          .from(inventoryLevels)
+          .where(gt(inventoryLevels.syncRev, since))
+          .orderBy(asc(inventoryLevels.syncRev))
+          .limit(probe),
+        inventoryLevelDown,
+      );
+      await collect(
+        'tombstone',
+        tx
+          .select()
+          .from(syncTombstones)
+          .where(gt(syncTombstones.syncRev, since))
+          .orderBy(asc(syncTombstones.syncRev))
+          .limit(probe),
+        (row) => ({ entity_type: row.entityType, entity_id: row.entityId, sync_rev: row.syncRev }),
+      );
+
+      merged.sort((a, b) => a.rev - b.rev);
+      const page = merged.slice(0, cap);
+      const last = page[page.length - 1];
+      return {
+        changes: page,
+        next_since: last ? last.rev : since,
+        has_more: merged.length > cap,
       };
     });
   }

@@ -2,6 +2,7 @@
  * Sync surface (1B): bootstrap snapshot, delta feed with tombstones and
  * paging, batch ingest with idempotent replay + domain revalidation.
  */
+import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { DbService } from '../src/db/db.service';
 import {
@@ -172,5 +173,87 @@ describe('SyncService.bootstrap', () => {
     const snapshot = await syncService.bootstrap(ctx);
     expect(JSON.stringify(snapshot)).not.toContain(B.product);
     expect(JSON.stringify(snapshot)).not.toContain('Other Store Secret');
+  });
+});
+
+describe('SyncService.changes', () => {
+  it('returns the full history ascending by rev with no tenant leaks', async () => {
+    const page = await syncService.changes(ctx, 0, 500);
+    expect(page.has_more).toBe(false);
+    const revs = page.changes.map((c) => c.rev);
+    expect(revs).toEqual([...revs].sort((a, b) => a - b));
+    expect(page.next_since).toBe(revs[revs.length - 1]);
+    const types = new Set(page.changes.map((c) => c.type));
+    for (const expected of [
+      'store',
+      'role',
+      'staff',
+      'location',
+      'register',
+      'tax_category',
+      'tax_rate',
+      'category',
+      'product',
+      'variant',
+      'barcode',
+      'inventory_level',
+    ]) {
+      expect(types).toContain(expected);
+    }
+    expect(JSON.stringify(page)).not.toContain('Other Store Secret');
+  });
+
+  it('staff change rows use the pin projection', async () => {
+    const page = await syncService.changes(ctx, 0, 500);
+    const staffChange = page.changes.find((c) => c.type === 'staff');
+    expect(staffChange?.data['pin_hash']).toBe('argon2id$pin');
+    expect(staffChange?.data).not.toHaveProperty('password_hash');
+  });
+
+  it('after an update, only the touched row comes back', async () => {
+    const before = await syncService.changes(ctx, 0, 500);
+    const since = before.next_since;
+    await db.tenants.forStore(A.store).tx(async (tx) => {
+      await tx.update(products).set({ name: 'Kopi-O' }).where(eq(products.id, A.product));
+    });
+    const page = await syncService.changes(ctx, since, 500);
+    expect(page.changes).toHaveLength(1);
+    expect(page.changes[0]).toMatchObject({ type: 'product', data: { id: A.product, name: 'Kopi-O' } });
+    expect(page.changes[0]?.rev).toBeGreaterThan(since);
+    expect(page.has_more).toBe(false);
+    // idle feed: nothing since the last ack
+    const idle = await syncService.changes(ctx, page.next_since, 500);
+    expect(idle.changes).toHaveLength(0);
+    expect(idle.next_since).toBe(page.next_since);
+  });
+
+  it('a deletion arrives as a tombstone', async () => {
+    const since = (await syncService.changes(ctx, 0, 500)).next_since;
+    await db.tenants.forStore(A.store).tx(async (tx) => {
+      // detach the product first, as the categories service does on delete
+      await tx.update(products).set({ categoryId: null }).where(eq(products.categoryId, A.category));
+      await tx.delete(categories).where(eq(categories.id, A.category));
+    });
+    const page = await syncService.changes(ctx, since, 500);
+    const tombstone = page.changes.find((c) => c.type === 'tombstone');
+    expect(tombstone?.data).toMatchObject({ entity_type: 'category', entity_id: A.category });
+  });
+
+  it('paginates with next_since covering the same set exactly once', async () => {
+    const all = await syncService.changes(ctx, 0, 500);
+    const seen: string[] = [];
+    let since = 0;
+    let pages = 0;
+    for (;;) {
+      const page = await syncService.changes(ctx, since, 3);
+      expect(page.changes.length).toBeLessThanOrEqual(3);
+      seen.push(...page.changes.map((c) => `${c.type}:${String(c.data['id'] ?? c.data['entity_id'])}:${c.rev}`));
+      pages += 1;
+      if (!page.has_more) break;
+      since = page.next_since;
+    }
+    expect(pages).toBeGreaterThan(1);
+    const full = all.changes.map((c) => `${c.type}:${String(c.data['id'] ?? c.data['entity_id'])}:${c.rev}`);
+    expect(seen).toEqual(full);
   });
 });

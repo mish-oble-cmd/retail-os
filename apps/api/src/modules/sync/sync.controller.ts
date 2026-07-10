@@ -1,7 +1,7 @@
-import { Body, Controller, Get, Post, Req } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, Post, Query, Req } from '@nestjs/common';
+import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
-import { activateDeviceSchema } from './dto';
+import { activateDeviceSchema, changesQuerySchema } from './dto';
 import { DevicesService } from './devices.service';
 import { SyncService } from './sync.service';
 
@@ -41,5 +41,18 @@ export class SyncController {
   async bootstrap(@Req() req: Request) {
     const ctx = await this.devices.authenticate(req.headers.authorization);
     return this.sync.bootstrap(ctx);
+  }
+
+  @Get('changes')
+  @ApiOperation({
+    operationId: 'syncChanges',
+    summary: 'Delta feed above a sync_rev cursor, tombstones included (device token)',
+  })
+  @ApiQuery({ name: 'since', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  async changes(@Query() query: unknown, @Req() req: Request) {
+    const ctx = await this.devices.authenticate(req.headers.authorization);
+    const { since, limit } = changesQuerySchema.parse(query);
+    return this.sync.changes(ctx, since, limit);
   }
 }

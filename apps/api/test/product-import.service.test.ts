@@ -5,7 +5,7 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { DbService } from '../src/db/db.service';
-import { locations, roles, staff, stores, taxCategories } from '../src/db/schema';
+import { categories, locations, roles, staff, stores, taxCategories } from '../src/db/schema';
 import { ProductImportService } from '../src/modules/catalog/product-import.service';
 import { ProductsService } from '../src/modules/catalog/products.service';
 import { createTestDb } from './pglite';
@@ -44,6 +44,12 @@ beforeAll(async () => {
     ]);
     await tx.insert(taxCategories).values({ id: A.taxCategory, storeId: A.store, name: 'Standard' });
     await tx.insert(locations).values({ id: A.location, storeId: A.store, name: 'Main' });
+    // Categories must pre-exist (approved ADM-03 import mockup: unknown
+    // category is a fixable error, never an auto-create).
+    await tx.insert(categories).values([
+      { id: '01CATAPPARELAAAAAAAAAAAAAA', storeId: A.store, name: 'Apparel' },
+      { id: '01CATMERCHAAAAAAAAAAAAAAAA', storeId: A.store, name: 'Merch' },
+    ]);
   });
 });
 
@@ -68,10 +74,14 @@ describe('import', () => {
       'Ghost Tax,Merch,5.00,,,,Imported VAT,,,,,,',
       // row 8: barcode clashes with row 2
       'Clash,Merch,3.00,,8880000001010,,,,,,,,',
+      // row 9: unknown category (mockup contract: error, never auto-create)
+      'Ghost Category,Chill Drinks,2.00,,,,,,,,,,',
+      // row 10: duplicate SKU within the file (clashes with row 4's MUG-1)
+      'Second Mug,Merch,8.00,MUG-1,,,,,,,,,',
     ].join('\n');
 
     const report = await importer.import(A.store, A.owner, csv);
-    expect(report.rows_total).toBe(7);
+    expect(report.rows_total).toBe(9);
     expect(report.products_created).toBe(2);
     expect(report.variants_created).toBe(3);
     expect(report.skipped).toEqual([
@@ -79,25 +89,25 @@ describe('import', () => {
       { row: 6, reason: 'Missing product name' },
       { row: 7, reason: 'Unknown tax category "Imported VAT"' },
       { row: 8, reason: expect.stringContaining('8880000001010') },
+      { row: 9, reason: expect.stringContaining(`Category "Chill Drinks" doesn't exist`) },
+      { row: 10, reason: 'Duplicate SKU MUG-1 within this file (also on row 4)' },
     ]);
 
-    // The matrix product landed with variants, stock, and auto-created category.
+    // The matrix product landed with variants, stock, and the existing category.
     const page = await products.list(A.store, { limit: 50, search: 'Kaya Toast Tee' }, { limit: 50 });
     const tee = page.items.find((p) => p.name === 'Kaya Toast Tee');
     expect(tee?.variant_count).toBe(2);
     expect(tee?.on_hand).toBe(8);
-    expect(tee?.category_id).toBeTruthy();
+    expect(tee?.category_id).toBe('01CATAPPARELAAAAAAAAAAAAAA');
   });
 
-  it('reuses an existing category by name on subsequent imports', async () => {
-    const csv = [HEADER, 'Second Shirt,Apparel,9.99,,,,Standard,,,,,,'].join('\n');
+  it('matches categories by name case-insensitively', async () => {
+    const csv = [HEADER, 'Second Shirt,apparel,9.99,,,,Standard,,,,,,'].join('\n');
     const report = await importer.import(A.store, A.owner, csv);
+    expect(report.skipped).toEqual([]);
     expect(report.products_created).toBe(1);
-    const [first, second] = await Promise.all([
-      products.list(A.store, { limit: 50, search: 'Kaya Toast Tee' }, { limit: 50 }),
-      products.list(A.store, { limit: 50, search: 'Second Shirt' }, { limit: 50 }),
-    ]);
-    expect(second.items[0]?.category_id).toBe(first.items[0]?.category_id);
+    const page = await products.list(A.store, { limit: 50, search: 'Second Shirt' }, { limit: 50 });
+    expect(page.items[0]?.category_id).toBe('01CATAPPARELAAAAAAAAAAAAAA');
   });
 
   it('rejects a wrong header outright', async () => {
@@ -141,6 +151,11 @@ describe('export', () => {
         .insert(taxCategories)
         .values({ id: '01TAXCATFFFFFFFFFFFFFFFFFF', storeId: fresh.store, name: 'Standard' });
       await tx.insert(locations).values({ id: fresh.location, storeId: fresh.store, name: 'Main' });
+      // Same category names as store A — categories travel by name and must exist first.
+      await tx.insert(categories).values([
+        { id: '01CATAPPARELFFFFFFFFFFFFFF', storeId: fresh.store, name: 'Apparel' },
+        { id: '01CATMERCHFFFFFFFFFFFFFFFF', storeId: fresh.store, name: 'Merch' },
+      ]);
     });
     const report = await importer.import(fresh.store, fresh.owner, csv);
     expect(report.skipped).toEqual([]);

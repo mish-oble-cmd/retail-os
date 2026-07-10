@@ -65,6 +65,292 @@ paths:
           description: ""
       summary: Confirm the authenticator code to turn 2FA on
       tags: *a1
+  /api/v1/categories:
+    get:
+      operationId: listCategories
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      summary: All categories, sort-ordered (client builds the tree)
+      tags: &a2
+        - catalog
+    post:
+      operationId: createCategory
+      parameters: []
+      responses:
+        "201":
+          description: ""
+      summary: Create a category
+      tags: *a2
+  /api/v1/categories/{id}:
+    patch:
+      operationId: updateCategory
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      summary: Rename, re-sort, or re-parent a category
+      tags: *a2
+    delete:
+      operationId: deleteCategory
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "204":
+          description: ""
+      summary: Delete an empty category
+      tags: *a2
+  /api/v1/products/import:
+    post:
+      operationId: importProducts
+      parameters: []
+      responses:
+        "201":
+          description: ""
+      summary: "CSV import, Phase 1 subset: fixed template, create-only; valid rows
+        import, invalid rows return with row + reason"
+      tags: &a3
+        - catalog
+  /api/v1/products/export:
+    get:
+      operationId: exportProducts
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      summary: All non-archived products as CSV in the import template (re-imports
+        cleanly)
+      tags: *a3
+  /api/v1/products:
+    get:
+      operationId: listProducts
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      summary: Paginated products with variant/stock rollups; search matches name,
+        SKU, or exact barcode. Archived products appear only with
+        status=archived.
+      tags: *a3
+    post:
+      operationId: createProduct
+      parameters: []
+      responses:
+        "201":
+          description: ""
+      summary: Create a product with its options matrix, variants, barcodes, and
+        opening stock
+      tags: *a3
+  /api/v1/products/{id}:
+    get:
+      operationId: getProduct
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      summary: Product with variants, barcodes, and on-hand
+      tags: *a3
+    patch:
+      operationId: updateProduct
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      summary: Update product-level fields (variants via /variants)
+      tags: *a3
+    delete:
+      operationId: archiveProduct
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "204":
+          description: ""
+      summary: Archive a product (soft delete — sale history references variants
+        forever)
+      tags: *a3
+  /api/v1/products/{id}/variants:
+    post:
+      operationId: addVariant
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "201":
+          description: ""
+      summary: Add a variant to an existing product
+      tags: *a3
+  /api/v1/variants/{id}:
+    get:
+      operationId: getVariant
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      summary: Variant with barcodes and on-hand
+      tags: &a4
+        - catalog
+    patch:
+      operationId: updateVariant
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      summary: Update variant pricing/SKU/tracking; `barcodes` replaces the whole set
+      tags: *a4
+    delete:
+      operationId: deleteVariant
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "204":
+          description: ""
+      summary: Delete a variant with no stock history (409 otherwise — the ledger
+        references it forever)
+      tags: *a4
+  /api/v1/uploads/product-image:
+    post:
+      operationId: presignProductImageUpload
+      parameters: []
+      responses:
+        "201":
+          description: ""
+      summary: Presigned PUT for a product image; persist the returned public_url via
+        PATCH /products/{id} images
+      tags:
+        - catalog
+  /api/v1/locations:
+    get:
+      operationId: listLocations
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      summary: All locations
+      tags: &a5
+        - settings
+    post:
+      operationId: createLocation
+      parameters: []
+      responses:
+        "201":
+          description: ""
+      summary: Create a location
+      tags: *a5
+  /api/v1/locations/{id}:
+    patch:
+      operationId: updateLocation
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      summary: Update or deactivate a location
+      tags: *a5
+  /api/v1/registers:
+    get:
+      operationId: listRegisters
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      summary: All registers with grid layout and pending-activation state
+      tags: &a6
+        - settings
+    post:
+      operationId: createRegister
+      parameters: []
+      responses:
+        "201":
+          description: ""
+      summary: Create a register at a location
+      tags: *a6
+  /api/v1/registers/{id}:
+    patch:
+      operationId: updateRegister
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      summary: Rename, (de)activate, or save the POS grid layout (ADM-16 designer)
+      tags: *a6
+  /api/v1/registers/{id}/activation-codes:
+    post:
+      operationId: issueActivationCode
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "201":
+          description: ""
+      summary: Issue a one-time activation code (8-char, 24 h TTL); shown once,
+        revokes any pending code
+      tags: *a6
+    delete:
+      operationId: revokeActivationCode
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "204":
+          description: ""
+      summary: Revoke the pending activation code
+      tags: *a6
 info:
   title: RetailOS API
   description: REST API per 03-architecture/api-design.md. Internal clients are

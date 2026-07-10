@@ -254,8 +254,9 @@ CREATE POLICY tenant_isolation ON stock_movements
 GRANT SELECT, INSERT, UPDATE, DELETE
   ON tax_categories, tax_rates, categories, products, variants, barcodes
   TO retailos_app;
--- Projection: updated in place, never deleted by the app.
-GRANT SELECT, INSERT, UPDATE ON inventory_levels TO retailos_app;
+-- Projection: rebuildable from the ledger, so full CRUD is safe (rows go away
+-- with their variant when it is deleted before any movement history exists).
+GRANT SELECT, INSERT, UPDATE, DELETE ON inventory_levels TO retailos_app;
 -- Ledger immutability (invariant #4): the app role cannot UPDATE or DELETE
 -- movements — corrections are new rows. Only the BYPASSRLS admin role could.
 GRANT SELECT, INSERT ON stock_movements TO retailos_app;

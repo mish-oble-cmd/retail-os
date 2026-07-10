@@ -111,6 +111,38 @@ export const registers = pgTable('registers', {
   ...timestamps,
 });
 
+/** One-time register activation codes (ADM-16); only the sha-256 hash is stored. */
+export const activationCodes = pgTable(
+  'activation_codes',
+  {
+    id: text('id').primaryKey(),
+    storeId: text('store_id')
+      .notNull()
+      .references(() => stores.id),
+    registerId: text('register_id').notNull(),
+    codeHash: text('code_hash').notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    usedAt: timestamp('used_at', { withTimezone: true }),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    createdBy: text('created_by'),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex('activation_codes_store_hash_unique').on(table.storeId, table.codeHash),
+    index('activation_codes_store_register_idx').on(table.storeId, table.registerId),
+    foreignKey({
+      name: 'activation_codes_register_fk',
+      columns: [table.storeId, table.registerId],
+      foreignColumns: [registers.storeId, registers.id],
+    }),
+    foreignKey({
+      name: 'activation_codes_staff_fk',
+      columns: [table.storeId, table.createdBy],
+      foreignColumns: [staff.storeId, staff.id],
+    }),
+  ],
+);
+
 // ---- Phase 1/1A: settings (tax) + catalog + inventory ledger ---------------
 
 export const taxCategories = pgTable(

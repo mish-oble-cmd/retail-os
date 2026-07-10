@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { DevicesService } from './devices.service';
 import { SyncController } from './sync.controller';
+import { SyncService } from './sync.service';
 
 /**
  * sync module (1B): device activation/trust + bootstrap/changes/batches.
@@ -9,7 +10,7 @@ import { SyncController } from './sync.controller';
  */
 @Module({
   controllers: [SyncController],
-  providers: [DevicesService],
+  providers: [DevicesService, SyncService],
   exports: [DevicesService],
 })
 export class SyncModule {}

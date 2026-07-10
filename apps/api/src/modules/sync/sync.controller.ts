@@ -1,7 +1,9 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import type { Request } from 'express';
 import { activateDeviceSchema } from './dto';
 import { DevicesService } from './devices.service';
+import { SyncService } from './sync.service';
 
 /**
  * Device-facing sync surface (offline-sync-strategy.md). /sync/activate is the
@@ -10,7 +12,10 @@ import { DevicesService } from './devices.service';
 @ApiTags('sync')
 @Controller('sync')
 export class SyncController {
-  constructor(private readonly devices: DevicesService) {}
+  constructor(
+    private readonly devices: DevicesService,
+    private readonly sync: SyncService,
+  ) {}
 
   @Post('activate')
   @ApiOperation({
@@ -26,5 +31,15 @@ export class SyncController {
       register_id: result.registerId,
       location_id: result.locationId,
     };
+  }
+
+  @Get('bootstrap')
+  @ApiOperation({
+    operationId: 'syncBootstrap',
+    summary: 'Full snapshot for a freshly activated register (device token)',
+  })
+  async bootstrap(@Req() req: Request) {
+    const ctx = await this.devices.authenticate(req.headers.authorization);
+    return this.sync.bootstrap(ctx);
   }
 }

@@ -69,6 +69,8 @@ export const updateProductSchema = z.object({
   brand: z.string().max(100).nullable(),
   status: z.enum(['active', 'draft', 'archived']),
   tax_category_id: ulidSchema,
+  /** Ordered public URLs from the presigned upload flow; replaces the whole set. */
+  images: z.array(z.string().url().max(500)).max(10),
 }).partial();
 
 export const createVariantSchema = variantInputSchema;

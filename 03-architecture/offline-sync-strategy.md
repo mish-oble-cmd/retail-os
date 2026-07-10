@@ -68,6 +68,7 @@ Registers keep their own completed orders in local SQLite for **60 days** (order
 ## Register activation & trust
 
 - Admin generates a one-time activation code per register → device exchanges it for a device token (scoped to store + register, revocable in admin)
+  - _Code policy (decided 2026-07-10):_ 8 characters, Crockford base32 (no ambiguous chars), single-use, expires after 24 h; unused codes and issued device tokens are both revocable from ADM-16
 - Local SQLite encrypted (SQLCipher/OS keystore); device token never leaves keychain
 - Staff PINs verified against synced `pin_hash` locally (argon2id, cost tuned for tablets)
 

@@ -15,6 +15,13 @@ Adopted at Phase 1 kickoff (proposed by AI, standing unless vetoed by user):
 5. **Object storage dev = MinIO** (S3-compatible adapter; prod provider at deploy) → tech-stack
 6. **Email dev = Mailpit; QR receipt page = admin app `/r/<order-ulid>`** → tech-stack
 
+## Phase 1 start decisions (2026-07-10, user-approved)
+
+1. **Workstream order: 1A → 1B → 1F → 1C → 1D → 1E** (catalog first, onboarding last — it stitches the loop and the <15-min measure needs everything working)
+2. **Browser `pos-web` is online-preferred in Phase 1**: the offline queue targets Electron (better-sqlite3) only; browser gets a brief IndexedDB queue + warning banner. wa-sqlite/OPFS moves to Phase 3 hardening.
+3. **First client is Singapore** → canonical demo/sample setup is **SGD, 9% GST tax-inclusive**; currency + tax stay per-store adjustable (see `data-model.md` §Tax). Sample catalog (1E) = ~40-product Singapore convenience-store dataset in SGD.
+4. **POS auto-lock 90 s** (cart preserved) → FR-5.1 note; **activation codes** 8-char Crockford base32, single-use, 24 h expiry → offline-sync-strategy.
+
 Phase 0 carry-over — deferral schedule approved 2026-07-10 (details in `phase-0-foundations.md` exit criteria):
 
 - **Hosted deploy of API/admin/Storybook** → due end of Phase 1, before Phase 1 code review (user provides Fly.io + Vercel credentials, ~30 min)

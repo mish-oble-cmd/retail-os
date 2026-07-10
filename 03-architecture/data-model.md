@@ -95,4 +95,4 @@ Phase 0 clarifications (approved 2026-07-08):
 - **Multi-rate exclusive**: each rate applies independently to the discounted line amount, each rounded half-up.
 - **Multi-rate inclusive**: net = gross / (1 + Σrates); each `tax_i = round_half_up(gross × rate_i_bp / (10000 + Σrate_bp))`. Any residual cent between `gross - net - Σtax_i` stays in net (never invented tax).
 - **Cart-level discounts** are allocated across lines proportionally to line amounts (largest-remainder method so no cent is lost) _before_ tax computes — tax always sees discounted line amounts.
-- **Canonical demo tax setup**: PHP currency, 12% VAT tax-inclusive (Philippines launch market); golden fixtures center on this plus exclusive/multi-rate/zero-rate cases.
+- **Canonical demo tax setup** (updated 2026-07-10 — first client is Singapore): **SGD currency, 9% GST, tax-inclusive**. Currency and rates remain per-store settings (integer basis points, inclusive/exclusive switchable), so any market is configurable without code changes. Golden fixtures center on SGD 9% inclusive; the original PHP 12% inclusive cases stay in the suite alongside exclusive/multi-rate/zero-rate cases.

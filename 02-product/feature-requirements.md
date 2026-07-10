@@ -48,6 +48,7 @@ Conventions: all money in minor units (integer). All timestamps UTC ISO-8601, di
 ## FR-5 Staff & permissions (US-24…26) — Phase 2
 
 - **FR-5.1 Auth**: back office = email+password with 2FA (TOTP); register = 4–6 digit PIN per staff, auto-lock after inactivity.
+  - _Phase 1 auto-lock default (decided 2026-07-10):_ POS locks to the PIN screen after **90 seconds** of inactivity; an in-progress cart is preserved and restored on unlock. Timeout becomes a per-store setting in Phase 2.
 - **FR-5.2 Roles**: Owner, Manager, Cashier + custom roles. Permission flags include: max discount %, refunds, price override, void, no-sale drawer open, reports access, inventory ops, settings, catalog edit.
   - _Phase 1 fixed roles (decided 2026-07-09):_ **Owner** = all permissions. **Cashier** = sell, park/retrieve, custom sale, discounts up to **10%** (line or cart), open/close own shift, paid in/out. Refunds, voids, price overrides, tax-exempt sales, discounts above 10%, and no-sale drawer open require **Owner PIN escalation** at the register. Custom roles and the permission editor arrive with full FR-5.2 in Phase 2.
 - **FR-5.3 Audit log**: voids, no-sales, overrides, refunds, permission changes, logins — queryable in admin.

@@ -15,7 +15,11 @@ Adopted at Phase 1 kickoff (proposed by AI, standing unless vetoed by user):
 5. **Object storage dev = MinIO** (S3-compatible adapter; prod provider at deploy) → tech-stack
 6. **Email dev = Mailpit; QR receipt page = admin app `/r/<order-ulid>`** → tech-stack
 
-Phase 0 carry-over (open, user-blocked): hosted deploy of API/admin/Storybook (credentials pending) and interactive Electron print / Expo scan verification.
+Phase 0 carry-over — deferral schedule approved 2026-07-10 (details in `phase-0-foundations.md` exit criteria):
+
+- **Hosted deploy of API/admin/Storybook** → due end of Phase 1, before Phase 1 code review (user provides Fly.io + Vercel credentials, ~30 min)
+- **Interactive Electron print verification** → due during workstream 1C, as part of receipt acceptance testing (user runs `pnpm dev --filter pos-desktop`, ~15 min)
+- **Expo device barcode-scan verification** → due at Phase 3 kickoff (user tests via Expo Go on phone, ~5 min)
 
 ## Mockup gate (before implementation)
 

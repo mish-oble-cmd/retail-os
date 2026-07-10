@@ -230,6 +230,8 @@ describe('signup seed compatibility', () => {
         .returning({ syncRev: taxCategories.syncRev });
       return rows[0]?.syncRev;
     });
-    expect(rev).toBe(1);
+    // rev 1 goes to the store row itself (stores_sync_rev, 0003); first
+    // catalog write takes rev 2.
+    expect(rev).toBe(2);
   });
 });

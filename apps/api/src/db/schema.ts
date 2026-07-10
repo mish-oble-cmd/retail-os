@@ -6,6 +6,7 @@ import {
   integer,
   jsonb,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   unique,
@@ -47,6 +48,7 @@ export const stores = pgTable('stores', {
   settings: jsonb('settings').notNull().default({}),
   /** Monotonic per-store revision counter feeding sync_rev (bump_sync_rev trigger). */
   syncSeq: bigint('sync_seq', { mode: 'number' }).notNull().default(0),
+  ...syncRev,
   ...timestamps,
 });
 
@@ -58,6 +60,7 @@ export const roles = pgTable('roles', {
   name: text('name').notNull(),
   /** permission flags per FR-5.2, e.g. { "owner": true, "max_discount_pct": 100 } */
   permissions: jsonb('permissions').notNull().default({}),
+  ...syncRev,
   ...timestamps,
 });
 
@@ -80,6 +83,7 @@ export const staff = pgTable(
     totpSecret: text('totp_secret'),
     totpEnabled: boolean('totp_enabled').notNull().default(false),
     active: boolean('active').notNull().default(true),
+    ...syncRev,
     ...timestamps,
   },
   (table) => [uniqueIndex('staff_store_email_unique').on(table.storeId, table.email)],
@@ -94,6 +98,7 @@ export const locations = pgTable('locations', {
   address: jsonb('address'),
   timezone: text('timezone').notNull().default('Asia/Manila'),
   active: boolean('active').notNull().default(true),
+  ...syncRev,
   ...timestamps,
 });
 
@@ -108,6 +113,7 @@ export const registers = pgTable('registers', {
   name: text('name').notNull(),
   gridLayout: jsonb('grid_layout').notNull().default({}),
   active: boolean('active').notNull().default(true),
+  ...syncRev,
   ...timestamps,
 });
 
@@ -374,6 +380,214 @@ export const stockMovements = pgTable(
     foreignKey({
       name: 'stock_movements_staff_fk',
       columns: [table.storeId, table.staffId],
+      foreignColumns: [staff.storeId, staff.id],
+    }),
+  ],
+);
+
+// ---- Phase 1/1B: sync plumbing + order facts --------------------------------
+// (0003_sync.sql; docs: data-model.md §Sync plumbing, offline-sync-strategy.md)
+
+/** Deletions ride the delta feed: AFTER DELETE triggers on ⬇-synced tables write here. */
+export const syncTombstones = pgTable(
+  'sync_tombstones',
+  {
+    storeId: text('store_id')
+      .notNull()
+      .references(() => stores.id),
+    entityType: text('entity_type').notNull(),
+    entityId: text('entity_id').notNull(),
+    ...syncRev,
+    deletedAt: timestamp('deleted_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.storeId, table.entityType, table.entityId] }),
+    index('sync_tombstones_store_rev_idx').on(table.storeId, table.syncRev),
+  ],
+);
+
+/** Activated register devices; only the sha-256 hash of the device token is stored. */
+export const devices = pgTable(
+  'devices',
+  {
+    id: text('id').primaryKey(),
+    storeId: text('store_id')
+      .notNull()
+      .references(() => stores.id),
+    registerId: text('register_id').notNull(),
+    tokenHash: text('token_hash').notNull(),
+    appVersion: text('app_version'),
+    activatedAt: timestamp('activated_at', { withTimezone: true }).notNull().defaultNow(),
+    lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex('devices_token_hash_unique').on(table.tokenHash),
+    index('devices_store_register_idx').on(table.storeId, table.registerId),
+    foreignKey({
+      name: 'devices_register_fk',
+      columns: [table.storeId, table.registerId],
+      foreignColumns: [registers.storeId, registers.id],
+    }),
+  ],
+);
+
+/** Immutable sale facts (invariant 4): only server-set state transitions may UPDATE. */
+export const orders = pgTable(
+  'orders',
+  {
+    id: text('id').primaryKey(),
+    storeId: text('store_id')
+      .notNull()
+      .references(() => stores.id),
+    registerId: text('register_id').notNull(),
+    locationId: text('location_id').notNull(),
+    staffId: text('staff_id'),
+    customerId: text('customer_id'),
+    number: text('number').notNull(),
+    state: text('state', {
+      enum: ['completed', 'partially_paid', 'refunded', 'partially_refunded', 'voided'],
+    }).notNull(),
+    currency: text('currency').notNull(),
+    subtotalAmount: bigint('subtotal_amount', { mode: 'number' }).notNull(),
+    discountAmount: bigint('discount_amount', { mode: 'number' }).notNull().default(0),
+    taxAmount: bigint('tax_amount', { mode: 'number' }).notNull().default(0),
+    totalAmount: bigint('total_amount', { mode: 'number' }).notNull(),
+    taxLines: jsonb('tax_lines').notNull().default([]),
+    note: text('note'),
+    source: text('source', { enum: ['pos', 'api'] })
+      .notNull()
+      .default('pos'),
+    clientCreatedAt: timestamp('client_created_at', { withTimezone: true }),
+    localSeq: bigint('local_seq', { mode: 'number' }),
+    receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
+    ...timestamps,
+  },
+  (table) => [
+    unique('orders_store_id_unique').on(table.storeId, table.id),
+    index('orders_store_created_idx').on(table.storeId, table.clientCreatedAt),
+    foreignKey({
+      name: 'orders_register_fk',
+      columns: [table.storeId, table.registerId],
+      foreignColumns: [registers.storeId, registers.id],
+    }),
+    foreignKey({
+      name: 'orders_location_fk',
+      columns: [table.storeId, table.locationId],
+      foreignColumns: [locations.storeId, locations.id],
+    }),
+    foreignKey({
+      name: 'orders_staff_fk',
+      columns: [table.storeId, table.staffId],
+      foreignColumns: [staff.storeId, staff.id],
+    }),
+  ],
+);
+
+export const orderLines = pgTable(
+  'order_lines',
+  {
+    id: text('id').primaryKey(),
+    storeId: text('store_id')
+      .notNull()
+      .references(() => stores.id),
+    orderId: text('order_id').notNull(),
+    variantId: text('variant_id'),
+    name: text('name').notNull(),
+    qty: bigint('qty', { mode: 'number' }).notNull(),
+    unitPriceAmount: bigint('unit_price_amount', { mode: 'number' }).notNull(),
+    discounts: jsonb('discounts').notNull().default([]),
+    taxLines: jsonb('tax_lines').notNull().default([]),
+    totalAmount: bigint('total_amount', { mode: 'number' }).notNull(),
+    costSnapshotAmount: bigint('cost_snapshot_amount', { mode: 'number' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('order_lines_store_order_idx').on(table.storeId, table.orderId),
+    foreignKey({
+      name: 'order_lines_order_fk',
+      columns: [table.storeId, table.orderId],
+      foreignColumns: [orders.storeId, orders.id],
+    }),
+    foreignKey({
+      name: 'order_lines_variant_fk',
+      columns: [table.storeId, table.variantId],
+      foreignColumns: [variants.storeId, variants.id],
+    }),
+  ],
+);
+
+export const payments = pgTable(
+  'payments',
+  {
+    id: text('id').primaryKey(),
+    storeId: text('store_id')
+      .notNull()
+      .references(() => stores.id),
+    orderId: text('order_id').notNull(),
+    tenderType: text('tender_type', { enum: ['cash', 'card_manual'] }).notNull(),
+    amount: bigint('amount', { mode: 'number' }).notNull(),
+    changeAmount: bigint('change_amount', { mode: 'number' }).notNull().default(0),
+    cardRef: text('card_ref'),
+    cardLast4: text('card_last4'),
+    capturedAt: timestamp('captured_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('payments_store_order_idx').on(table.storeId, table.orderId),
+    foreignKey({
+      name: 'payments_order_fk',
+      columns: [table.storeId, table.orderId],
+      foreignColumns: [orders.storeId, orders.id],
+    }),
+  ],
+);
+
+/** Batch idempotency: PK (store_id, batch ULID); acks are replayed verbatim on duplicates. */
+export const syncBatches = pgTable(
+  'sync_batches',
+  {
+    id: text('id').notNull(),
+    storeId: text('store_id')
+      .notNull()
+      .references(() => stores.id),
+    registerId: text('register_id').notNull(),
+    deviceId: text('device_id').notNull(),
+    factCount: integer('fact_count').notNull(),
+    acks: jsonb('acks').notNull(),
+    receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.storeId, table.id] }),
+    foreignKey({
+      name: 'sync_batches_register_fk',
+      columns: [table.storeId, table.registerId],
+      foreignColumns: [registers.storeId, registers.id],
+    }),
+  ],
+);
+
+/** Ingest divergences (golden rule: the sale is accepted, the human sees the delta). */
+export const syncConflicts = pgTable(
+  'sync_conflicts',
+  {
+    id: text('id').primaryKey(),
+    storeId: text('store_id')
+      .notNull()
+      .references(() => stores.id),
+    conflictType: text('conflict_type').notNull(),
+    entityType: text('entity_type').notNull(),
+    entityId: text('entity_id').notNull(),
+    details: jsonb('details').notNull().default({}),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+    resolvedBy: text('resolved_by'),
+  },
+  (table) => [
+    foreignKey({
+      name: 'sync_conflicts_staff_fk',
+      columns: [table.storeId, table.resolvedBy],
       foreignColumns: [staff.storeId, staff.id],
     }),
   ],

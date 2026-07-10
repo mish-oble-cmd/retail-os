@@ -84,7 +84,9 @@ describe('tenant isolation (RLS)', () => {
           roleId: B.role,
         }),
       ),
-    ).rejects.toThrow(/row-level security/);
+      // Since 0003 the staff sync_rev trigger fires first and cannot see the
+      // forged store (RLS on stores) — either failure keeps the write out.
+    ).rejects.toThrow(/row-level security|not visible in this context/);
   });
 
   it("updating another store's rows affects nothing", async () => {

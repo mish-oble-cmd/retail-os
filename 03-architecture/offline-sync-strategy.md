@@ -24,7 +24,13 @@ The core differentiator (attacks Shopify weaknesses W1/W5). Read alongside `data
 - **Outbox table**: every locally-created fact row also appends an outbox entry (same SQLite transaction — atomicity guarantees no lost sales)
 - **Pusher**: drains outbox in order into `POST /sync/batches` (≤500 facts/batch, gzip, batch idempotency key = ULID). Retries with exponential backoff + jitter; survives app restarts (cursor persisted)
 - **Puller**: `GET /sync/changes?since=<last_ack_rev>` long-poll/interval; applies deltas in a transaction; bumps `last_ack_rev` only after apply
-- **Bootstrap**: first activation downloads a snapshot (catalog+settings+customers) then switches to deltas
+- **Bootstrap**: first activation downloads a snapshot (catalog+settings+customers — customers join in Phase 2 when the table exists) then switches to deltas
+
+### Deltas & deletions (1B decisions, 2026-07-11)
+
+- Hard deletes flow down as **tombstones**: `AFTER DELETE` triggers on every ⬇-synced table write `sync_tombstones (store_id, entity_type, entity_id, sync_rev)`; the delta feed emits them as `{type: "tombstone"}` changes and the client deletes the mirrored row
+- Phase-0 tables (`stores`, `locations`, `registers`, `staff`, `roles`) carry `sync_rev` from 1B; staff syncs down as a projection (`id, name, role_id, pin_hash, active`) — password/TOTP material never leaves the server
+- Known race, accepted for Phase 1 volume: a pull can observe rev N+1 while the transaction that took rev N is uncommitted, permanently skipping N. Catalog writes are single-writer per store today; Phase 3 hardening replaces this with a commit-ordered feed
 - **Status surface**: every POS screen shows a subtle sync indicator (synced / N pending / offline); "Sync Health" detail screen for troubleshooting
 
 ## Server ingest pipeline
@@ -69,6 +75,7 @@ Registers keep their own completed orders in local SQLite for **60 days** (order
 
 - Admin generates a one-time activation code per register → device exchanges it for a device token (scoped to store + register, revocable in admin)
   - _Code policy (decided 2026-07-10):_ 8 characters, Crockford base32 (no ambiguous chars), single-use, expires after 24 h; unused codes and issued device tokens are both revocable from ADM-16
+  - _Token mechanics (decided 2026-07-11, 1B):_ `POST /sync/activate` consumes the code and returns `rot_` + 32 random bytes base64url, shown once; only its sha-256 hash lives in the `devices` table (id, store_id, register_id, token_hash, last_seen_at, revoked_at). `activation_codes.code_hash` is globally unique so the code alone resolves the store — same cross-tenant lookup class as login-by-email. Sync endpoints authenticate with `Authorization: Bearer rot_…`
 - Local SQLite encrypted (SQLCipher/OS keystore); device token never leaves keychain
 - Staff PINs verified against synced `pin_hash` locally (argon2id, cost tuned for tablets)
 

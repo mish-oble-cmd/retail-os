@@ -46,6 +46,17 @@ _Shipped on `phase-1/catalog`: catalog/settings schema + RLS migrations, product
 
 SQLite schema on device (catalog mirror + facts tables); bootstrap download; delta pull (catalog/settings/staff); outbox + pusher v1 (`/sync/bootstrap`, `/sync/changes`, `/sync/batches` minimal happy path + idempotent replay). _The full conflict matrix is Phase 3, but idempotency and atomic outbox writes are NOT deferrable._
 
+**1B kickoff decisions (2026-07-11, proposed by AI, standing unless vetoed):** _(details + plan: `docs/superpowers/plans/2026-07-11-1b-pos-data-layer.md`)_
+
+1. Device auth: `POST /sync/activate` exchanges the one-time code for an opaque `rot_…` device token (sha-256 hash stored in new `devices` table); `activation_codes.code_hash` becomes globally unique so codes resolve without a store id
+2. Deletions sync via a `sync_tombstones` table written by `AFTER DELETE` triggers on every ⬇-synced table
+3. `stores/locations/registers/staff/roles` gain `sync_rev`; staff syncs down as a projection (`id, name, role_id, pin_hash, active` — never password/TOTP)
+4. Facts storage lands now: `orders`/`order_lines`/`payments` + `sync_batches` (batch dedupe, stored acks) + `sync_conflicts`; refund/shift facts arrive with 1C/1D
+5. Ingest revalidation v1: recompute totals via `@retailos/domain`; mismatch → `total_mismatch` conflict, unknown rate → `stale_reference` — fact always accepted
+6. Client device-token storage is pluggable (`SecretStore`); SQLite-backed default, OS-keychain adapter with the 1C Electron wiring; better-sqlite3 is an optional lazy peer dep of `@retailos/sync`
+7. Known delta-feed race (uncommitted-rev skip under concurrent writers) accepted at Phase 1 volume; Phase 3 hardening revisits
+8. Customers excluded from bootstrap/changes until Phase 2 (no customers table yet)
+
 ### 1C Sell flow (pos-web + Electron)
 
 Sell screen per approved mockup: grid, search, barcode wedge focus-trap; cart ops; discounts sheet (permission ceiling hardcoded to role later); custom sale; park/retrieve; payment screen: cash w/ change + quick amounts, manual card (ref + last4), split tender; receipt: ESC/POS print + email + QR; refunds against local/synced orders; register orders list.

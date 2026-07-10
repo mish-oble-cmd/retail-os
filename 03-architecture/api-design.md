@@ -47,6 +47,7 @@ REST, OpenAPI-first (spec is written before handlers; `@retailos/api-client` is 
 /webhooks/subscriptions                  CRUD (+ test delivery)
 /api-keys                                CRUD (admin session only)
 
+/sync/activate                           POST (activation code → device token; the only unauthenticated sync route)
 /sync/bootstrap                          GET  (device token; snapshot)
 /sync/changes?since=rev                  GET  (delta feed)
 /sync/batches                            POST (fact ingest; see offline-sync-strategy.md)

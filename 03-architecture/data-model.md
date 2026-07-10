@@ -76,6 +76,13 @@ Store ─┬─ Location ─┬─ Register ─── Shift ─── ShiftEvent
 - **SyncClient**: device fingerprint, register_id, last_seen, last_ack_rev | **SyncBatch**: client_id, idempotency_key, payload hash, status | **SyncConflict**: type, entities, resolution, resolved_by
 - **AuditLog**: actor, action, entity ref, before/after JSONB (sensitive actions only)
 
+### Sync plumbing (concrete 1B tables, 2026-07-11)
+
+- **devices** (realizes SyncClient): register_id, token_hash (sha-256 of the `rot_…` device token, shown once at activation), app_version, activated_at, last_seen_at, revoked_at
+- **sync_batches** (realizes SyncBatch): PK (store_id, batch ULID) = the idempotency key; register_id, device_id, fact_count, stored `acks` JSONB replayed verbatim on duplicate delivery
+- **sync_conflicts** (realizes SyncConflict): conflict_type (`total_mismatch`, `stale_reference`, … full matrix Phase 3), entity_type/entity_id, details JSONB, resolved_at/resolved_by
+- **sync_tombstones**: (store_id, entity_type, entity_id) + sync_rev — written by `AFTER DELETE` triggers on ⬇-synced tables so deletions ride the delta feed
+
 ## Invariants (enforce in domain package + DB constraints)
 
 1. `sum(OrderLine totals) + tax == Order.total` — server recomputes on ingest; mismatch → SyncConflict, never silent fix

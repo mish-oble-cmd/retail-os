@@ -2,7 +2,7 @@
 
 import { Badge, Button, Input, Modal } from '@retailos/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AppShell } from '../../../components/app-shell';
 import { SettingsTabs } from '../../../components/settings-tabs';
 import { api, type MeResource } from '../../../lib/api';
@@ -241,6 +241,12 @@ function AddStaffModal({
   const [email, setEmail] = useState('');
   const defaultRole = roles.find((r) => r.name === 'Cashier') ?? roles[0];
   const [roleId, setRoleId] = useState(defaultRole?.id ?? '');
+
+  // Roles typically arrive before the modal opens, but guard the race where
+  // the list is still loading when "Add staff" is clicked.
+  useEffect(() => {
+    if (!roleId && defaultRole) setRoleId(defaultRole.id);
+  }, [defaultRole, roleId]);
 
   return (
     <Modal

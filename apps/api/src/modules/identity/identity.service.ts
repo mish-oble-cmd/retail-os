@@ -3,6 +3,7 @@ import * as argon2 from 'argon2';
 import { and, eq } from 'drizzle-orm';
 import { authenticator } from 'otplib';
 import { ulid } from 'ulid';
+import { ARGON2_OPTIONS } from '../../common/hashing';
 import { DbService } from '../../db/db.service';
 import { roles, staff, stores, taxCategories, taxRates } from '../../db/schema';
 
@@ -20,13 +21,6 @@ export interface Identity {
   email: string;
   roleName: string;
 }
-
-const ARGON2_OPTIONS: argon2.Options = {
-  type: argon2.argon2id,
-  memoryCost: 19_456, // 19 MiB — OWASP-recommended argon2id baseline
-  timeCost: 2,
-  parallelism: 1,
-};
 
 /**
  * Convenience default for the seeded "Standard" tax category; the onboarding

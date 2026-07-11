@@ -22,3 +22,25 @@ export const loginSchema = z.object({
 export const totpActivateSchema = z.object({
   code: z.string().regex(/^\d{6}$/),
 });
+
+export const ulidSchema = z.string().regex(/^[0-9A-HJKMNP-TV-Z]{26}$/, 'ULID expected');
+
+export const createStaffSchema = z.object({
+  name: z.string().min(1).max(120),
+  email: z.string().email().max(320).optional(),
+  role_id: ulidSchema,
+});
+export type CreateStaffInput = z.infer<typeof createStaffSchema>;
+
+export const updateStaffSchema = z
+  .object({
+    name: z.string().min(1).max(120),
+    role_id: ulidSchema,
+    active: z.boolean(),
+  })
+  .partial();
+export type UpdateStaffInput = z.infer<typeof updateStaffSchema>;
+
+export const setPinSchema = z.object({
+  pin: z.string().regex(/^\d{4,6}$/, 'PIN must be 4-6 digits'),
+});

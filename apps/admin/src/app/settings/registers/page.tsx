@@ -4,6 +4,7 @@ import { Badge, Button, Input, Modal } from '@retailos/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { AppShell } from '../../../components/app-shell';
+import { SettingsTabs } from '../../../components/settings-tabs';
 import {
   catalogApi,
   settingsApi,
@@ -73,6 +74,7 @@ export default function RegistersPage() {
 
   return (
     <AppShell title="Locations & registers">
+      <SettingsTabs />
       <div className="flex max-w-4xl flex-col gap-4">
         {actionError ? (
           <p className="rounded border border-danger/40 bg-danger/5 px-3 py-2 text-body-sm text-danger">

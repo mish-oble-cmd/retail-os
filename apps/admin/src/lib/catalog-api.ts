@@ -152,6 +152,23 @@ export interface IssuedActivationCode {
   expires_at: string;
 }
 
+export interface StaffResource {
+  id: string;
+  name: string;
+  email: string | null;
+  role_id: string;
+  role_name: string;
+  active: boolean;
+  has_pin: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RoleResource {
+  id: string;
+  name: string;
+}
+
 const V1 = '/api/v1';
 
 // why as: dynamic segments and query strings are never literal keys of the
@@ -217,4 +234,15 @@ export const settingsApi = {
     api.post<IssuedActivationCode>(p(`${V1}/registers/${registerId}/activation-codes`)),
   revokeActivationCode: (registerId: string) =>
     api.delete(p(`${V1}/registers/${registerId}/activation-codes`)),
+};
+
+export const staffApi = {
+  listStaff: () => api.get<{ items: StaffResource[] }>(p(`${V1}/staff`)),
+  listRoles: () => api.get<{ items: RoleResource[] }>(p(`${V1}/roles`)),
+  createStaff: (input: { name: string; email?: string; role_id: string }) =>
+    api.post<StaffResource>(p(`${V1}/staff`), input),
+  updateStaff: (id: string, input: { name?: string; role_id?: string; active?: boolean }) =>
+    api.patch<StaffResource>(p(`${V1}/staff/${id}`), input),
+  setPin: (id: string, pin: string) =>
+    api.post<StaffResource>(p(`${V1}/staff/${id}/pin`), { pin }),
 };

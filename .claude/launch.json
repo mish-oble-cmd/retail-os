@@ -15,6 +15,12 @@
       "runtimeExecutable": "bash",
       "runtimeArgs": ["-lc", "cd apps/admin && pnpm dev"],
       "port": 3000
+    },
+    {
+      "name": "pos-web",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-lc", "cd apps/pos-web && pnpm dev"],
+      "port": 5173
     }
   ]
 }

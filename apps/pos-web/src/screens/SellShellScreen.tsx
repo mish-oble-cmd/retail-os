@@ -5,7 +5,13 @@ import { Badge, Button, MoneyText } from '@retailos/ui';
  * approved mockup) is Phase 1 scope. Phase 0 only proves the shell: density,
  * tokens, fullscreen app feel, sync pill placement.
  */
-export function SellShellScreen({ onLock }: { onLock: () => void }) {
+export function SellShellScreen({
+  staffName,
+  onLock,
+}: {
+  staffName: string | null;
+  onLock: () => void;
+}) {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="flex h-14 flex-none items-center gap-4 border-b border-border bg-surface px-4">
@@ -15,6 +21,7 @@ export function SellShellScreen({ onLock }: { onLock: () => void }) {
         </div>
         <div className="ml-auto flex items-center gap-3">
           <Badge tone="success">Synced · just now</Badge>
+          {staffName ? <span className="text-body-sm text-ink-muted">{staffName}</span> : null}
           <Button variant="secondary" size="pos" onClick={onLock}>
             Lock
           </Button>

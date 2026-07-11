@@ -97,6 +97,12 @@ describe('recordSale', () => {
     expect(driver.all(`SELECT * FROM stock_movements`)).toHaveLength(0);
     expect(pendingCount(driver)).toBe(0);
   });
+
+  it('refuses a sale without staff attribution (1F)', () => {
+    const unattributed = { ...makeSale(), staffId: undefined } as unknown as LocalSaleInput;
+    expect(() => recordSale(driver, unattributed)).toThrow(/staffId is required/);
+    expect(pendingCount(driver)).toBe(0); // nothing half-written
+  });
 });
 
 describe('claimBatch / markPushed', () => {

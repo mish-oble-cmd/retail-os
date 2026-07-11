@@ -54,7 +54,7 @@ export interface LocalStockMovement {
 export interface LocalSaleInput {
   id: string;
   number: string;
-  staffId?: string | null;
+  staffId: string;
   customerId?: string | null;
   note?: string | null;
   currency: string;
@@ -74,7 +74,7 @@ const wireTaxLines = (taxLines: LocalTaxLine[]) =>
 const orderFactPayload = (sale: LocalSaleInput) => ({
   id: sale.id,
   number: sale.number,
-  staff_id: sale.staffId ?? null,
+  staff_id: sale.staffId,
   customer_id: sale.customerId ?? null,
   note: sale.note ?? null,
   lines: sale.lines.map((line) => ({
@@ -112,6 +112,9 @@ const movementFactPayload = (movement: LocalStockMovement, orderId: string) => (
 
 /** Records a completed sale locally: order + lines + payments + movements + outbox, one tx. */
 export function recordSale(driver: SqlDriver, sale: LocalSaleInput): void {
+  if (!sale.staffId) {
+    throw new Error('recordSale: staffId is required — every order is attributed (FR-5.1)');
+  }
   driver.tx(() => {
     driver.run(
       `INSERT INTO orders (id, number, staff_id, customer_id, state, currency, subtotal_amount,
@@ -120,7 +123,7 @@ export function recordSale(driver: SqlDriver, sale: LocalSaleInput): void {
       [
         sale.id,
         sale.number,
-        sale.staffId ?? null,
+        sale.staffId,
         sale.customerId ?? null,
         sale.currency,
         sale.totals.subtotal,

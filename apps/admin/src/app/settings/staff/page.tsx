@@ -101,6 +101,13 @@ export default function StaffPage() {
             <tbody>
               {staffList.map((row) => {
                 const isSelf = row.id === me.data?.staff_id;
+                // The store must keep one active Owner; the last one can't be
+                // deactivated (server-enforced). Surface it as a visible hint,
+                // not a hover-only tooltip.
+                const isLastActiveOwner =
+                  row.role_name === 'Owner' &&
+                  row.active &&
+                  staffList.filter((s) => s.role_name === 'Owner' && s.active).length === 1;
                 return (
                   <tr key={row.id} className="border-t border-border">
                     <td className="px-4 py-2.5">
@@ -148,7 +155,26 @@ export default function StaffPage() {
                             }`}
                           />
                         </button>
-                        {!row.active ? <span className="text-caption text-ink-muted">Inactive</span> : null}
+                        {isLastActiveOwner ? (
+                          <span className="inline-flex items-center gap-1 text-caption text-ink-muted">
+                            <svg
+                              viewBox="0 0 24 24"
+                              className="h-3.5 w-3.5"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth={1.75}
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              aria-hidden="true"
+                            >
+                              <rect width="18" height="11" x="3" y="11" rx="2" />
+                              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                            </svg>
+                            Last owner
+                          </span>
+                        ) : !row.active ? (
+                          <span className="text-caption text-ink-muted">Inactive</span>
+                        ) : null}
                       </div>
                     </td>
                     <td className="px-4 py-2.5 text-right">

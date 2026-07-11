@@ -65,6 +65,62 @@ paths:
           description: ""
       summary: Confirm the authenticator code to turn 2FA on
       tags: *a1
+  /api/v1/staff:
+    get:
+      operationId: listStaff
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      summary: All staff with role + PIN status
+      tags: &a2
+        - staff
+    post:
+      operationId: createStaff
+      parameters: []
+      responses:
+        "201":
+          description: ""
+      summary: Add a staff member
+      tags: *a2
+  /api/v1/staff/{id}:
+    patch:
+      operationId: updateStaff
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      summary: Rename, change role, or (de)activate
+      tags: *a2
+  /api/v1/staff/{id}/pin:
+    post:
+      operationId: setStaffPin
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "201":
+          description: ""
+      summary: Set or reset a register PIN
+      tags: *a2
+  /api/v1/roles:
+    get:
+      operationId: listRoles
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      summary: Fixed Phase 1 roles (Owner, Cashier)
+      tags:
+        - staff
   /api/v1/categories:
     get:
       operationId: listCategories
@@ -73,7 +129,7 @@ paths:
         "200":
           description: ""
       summary: All categories, sort-ordered (client builds the tree)
-      tags: &a2
+      tags: &a3
         - catalog
     post:
       operationId: createCategory
@@ -82,7 +138,7 @@ paths:
         "201":
           description: ""
       summary: Create a category
-      tags: *a2
+      tags: *a3
   /api/v1/categories/{id}:
     patch:
       operationId: updateCategory
@@ -96,7 +152,7 @@ paths:
         "200":
           description: ""
       summary: Rename, re-sort, or re-parent a category
-      tags: *a2
+      tags: *a3
     delete:
       operationId: deleteCategory
       parameters:
@@ -109,7 +165,7 @@ paths:
         "204":
           description: ""
       summary: Delete an empty category
-      tags: *a2
+      tags: *a3
   /api/v1/products/import:
     post:
       operationId: importProducts
@@ -119,7 +175,7 @@ paths:
           description: ""
       summary: "CSV import, Phase 1 subset: fixed template, create-only; valid rows
         import, invalid rows return with row + reason"
-      tags: &a3
+      tags: &a4
         - catalog
   /api/v1/products/export:
     get:
@@ -130,7 +186,7 @@ paths:
           description: ""
       summary: All non-archived products as CSV in the import template (re-imports
         cleanly)
-      tags: *a3
+      tags: *a4
   /api/v1/products:
     get:
       operationId: listProducts
@@ -141,7 +197,7 @@ paths:
       summary: Paginated products with variant/stock rollups; search matches name,
         SKU, or exact barcode. Archived products appear only with
         status=archived.
-      tags: *a3
+      tags: *a4
     post:
       operationId: createProduct
       parameters: []
@@ -150,7 +206,7 @@ paths:
           description: ""
       summary: Create a product with its options matrix, variants, barcodes, and
         opening stock
-      tags: *a3
+      tags: *a4
   /api/v1/products/{id}:
     get:
       operationId: getProduct
@@ -164,7 +220,7 @@ paths:
         "200":
           description: ""
       summary: Product with variants, barcodes, and on-hand
-      tags: *a3
+      tags: *a4
     patch:
       operationId: updateProduct
       parameters:
@@ -177,7 +233,7 @@ paths:
         "200":
           description: ""
       summary: Update product-level fields (variants via /variants)
-      tags: *a3
+      tags: *a4
     delete:
       operationId: archiveProduct
       parameters:
@@ -191,7 +247,7 @@ paths:
           description: ""
       summary: Archive a product (soft delete — sale history references variants
         forever)
-      tags: *a3
+      tags: *a4
   /api/v1/products/{id}/variants:
     post:
       operationId: addVariant
@@ -205,7 +261,7 @@ paths:
         "201":
           description: ""
       summary: Add a variant to an existing product
-      tags: *a3
+      tags: *a4
   /api/v1/variants/{id}:
     get:
       operationId: getVariant
@@ -219,7 +275,7 @@ paths:
         "200":
           description: ""
       summary: Variant with barcodes and on-hand
-      tags: &a4
+      tags: &a5
         - catalog
     patch:
       operationId: updateVariant
@@ -233,7 +289,7 @@ paths:
         "200":
           description: ""
       summary: Update variant pricing/SKU/tracking; `barcodes` replaces the whole set
-      tags: *a4
+      tags: *a5
     delete:
       operationId: deleteVariant
       parameters:
@@ -247,7 +303,7 @@ paths:
           description: ""
       summary: Delete a variant with no stock history (409 otherwise — the ledger
         references it forever)
-      tags: *a4
+      tags: *a5
   /api/v1/uploads/product-image:
     post:
       operationId: presignProductImageUpload
@@ -277,7 +333,7 @@ paths:
         "201":
           description: ""
       summary: Exchange a one-time activation code for a device token (shown once)
-      tags: &a5
+      tags: &a6
         - sync
   /api/v1/sync/bootstrap:
     get:
@@ -287,7 +343,7 @@ paths:
         "200":
           description: ""
       summary: Full snapshot for a freshly activated register (device token)
-      tags: *a5
+      tags: *a6
   /api/v1/sync/changes:
     get:
       operationId: syncChanges
@@ -306,7 +362,7 @@ paths:
         "200":
           description: ""
       summary: Delta feed above a sync_rev cursor, tombstones included (device token)
-      tags: *a5
+      tags: *a6
   /api/v1/sync/batches:
     post:
       operationId: syncBatches
@@ -316,7 +372,7 @@ paths:
           description: ""
       summary: Ingest a batch of POS facts; idempotent by batch id and fact ULID
         (device token)
-      tags: *a5
+      tags: *a6
   /api/v1/locations:
     get:
       operationId: listLocations
@@ -325,7 +381,7 @@ paths:
         "200":
           description: ""
       summary: All locations
-      tags: &a6
+      tags: &a7
         - settings
     post:
       operationId: createLocation
@@ -334,7 +390,7 @@ paths:
         "201":
           description: ""
       summary: Create a location
-      tags: *a6
+      tags: *a7
   /api/v1/locations/{id}:
     patch:
       operationId: updateLocation
@@ -348,7 +404,7 @@ paths:
         "200":
           description: ""
       summary: Update or deactivate a location
-      tags: *a6
+      tags: *a7
   /api/v1/registers:
     get:
       operationId: listRegisters
@@ -357,7 +413,7 @@ paths:
         "200":
           description: ""
       summary: All registers with grid layout and pending-activation state
-      tags: &a7
+      tags: &a8
         - settings
     post:
       operationId: createRegister
@@ -366,7 +422,7 @@ paths:
         "201":
           description: ""
       summary: Create a register at a location
-      tags: *a7
+      tags: *a8
   /api/v1/registers/{id}:
     patch:
       operationId: updateRegister
@@ -380,7 +436,7 @@ paths:
         "200":
           description: ""
       summary: Rename, (de)activate, or save the POS grid layout (ADM-16 designer)
-      tags: *a7
+      tags: *a8
   /api/v1/registers/{id}/activation-codes:
     post:
       operationId: issueActivationCode
@@ -395,7 +451,7 @@ paths:
           description: ""
       summary: Issue a one-time activation code (8-char, 24 h TTL); shown once,
         revokes any pending code
-      tags: *a7
+      tags: *a8
     delete:
       operationId: revokeActivationCode
       parameters:
@@ -408,7 +464,7 @@ paths:
         "204":
           description: ""
       summary: Revoke the pending activation code
-      tags: *a7
+      tags: *a8
 info:
   title: RetailOS API
   description: REST API per 03-architecture/api-design.md. Internal clients are

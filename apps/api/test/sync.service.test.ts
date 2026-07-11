@@ -2,6 +2,7 @@
  * Sync surface (1B): bootstrap snapshot, delta feed with tombstones and
  * paging, batch ingest with idempotent replay + domain revalidation.
  */
+import { calculateCart } from '@retailos/domain';
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { DbService } from '../src/db/db.service';
@@ -10,16 +11,22 @@ import {
   categories,
   inventoryLevels,
   locations,
+  orderLines,
+  orders,
+  payments,
   products,
   registers,
   roles,
   staff,
+  stockMovements,
   stores,
+  syncConflicts,
   taxCategories,
   taxRates,
   variants,
 } from '../src/db/schema';
 import type { DeviceContext } from '../src/modules/sync/devices.service';
+import type { SyncBatchInput } from '../src/modules/sync/dto';
 import { SyncService } from '../src/modules/sync/sync.service';
 import { createTestDb } from './pglite';
 
@@ -239,6 +246,22 @@ describe('SyncService.changes', () => {
     expect(tombstone?.data).toMatchObject({ entity_type: 'category', entity_id: A.category });
   });
 
+  it('a re-created then re-deleted entity still yields one tombstone', async () => {
+    // guards the ON CONFLICT upsert path in write_sync_tombstone
+    const catId = '01CATAAAAAAAAAAAAAAAAAAAA2';
+    await db.tenants.forStore(A.store).tx(async (tx) => {
+      await tx.insert(categories).values({ id: catId, storeId: A.store, name: 'Twice' });
+      await tx.delete(categories).where(eq(categories.id, catId));
+      await tx.insert(categories).values({ id: catId, storeId: A.store, name: 'Twice again' });
+      await tx.delete(categories).where(eq(categories.id, catId));
+    });
+    const page = await syncService.changes(ctx, 0, 500);
+    const tombstones = page.changes.filter(
+      (c) => c.type === 'tombstone' && c.data['entity_id'] === catId,
+    );
+    expect(tombstones).toHaveLength(1);
+  });
+
   it('paginates with next_since covering the same set exactly once', async () => {
     const all = await syncService.changes(ctx, 0, 500);
     const seen: string[] = [];
@@ -255,5 +278,228 @@ describe('SyncService.changes', () => {
     expect(pages).toBeGreaterThan(1);
     const full = all.changes.map((c) => `${c.type}:${String(c.data['id'] ?? c.data['entity_id'])}:${c.rev}`);
     expect(seen).toEqual(full);
+  });
+});
+
+describe('SyncService.ingestBatch', () => {
+  let seq = 0;
+  const nextUlid = (prefix: string) =>
+    `${prefix}${String(++seq).padStart(26 - prefix.length, '0')}`;
+
+  /** Build an order.completed fact whose totals really come from the domain math. */
+  const makeOrderFact = (opts?: { totalDelta?: number; rateId?: string }) => {
+    const orderId = nextUlid('01ORD');
+    const lineId = nextUlid('01LIN');
+    const rateId = opts?.rateId ?? A.taxRate;
+    const cart = calculateCart({
+      currency: 'SGD',
+      priceMode: 'tax_inclusive',
+      lines: [
+        {
+          id: lineId,
+          unitPriceAmount: 250,
+          qty: 2,
+          taxRates: [{ id: A.taxRate, rateBp: 900 }],
+        },
+      ],
+    });
+    const line = cart.lines[0];
+    if (!line) throw new Error('cart math returned no lines');
+    return {
+      type: 'order.completed' as const,
+      order: {
+        id: orderId,
+        number: `R1-${String(seq).padStart(6, '0')}`,
+        staff_id: A.staff,
+        lines: [
+          {
+            id: lineId,
+            variant_id: A.variant,
+            name: 'Kopi',
+            qty: 2,
+            unit_price: { amount: 250, currency: 'SGD' },
+            discounts: [],
+            tax_lines: line.taxLines.map((t) => ({ rate_id: rateId, amount: t.amount })),
+            total_amount: line.totalAmount,
+          },
+        ],
+        totals: {
+          subtotal: cart.subtotalAmount,
+          discount: cart.discountAmount,
+          tax: cart.taxAmount,
+          total: cart.totalAmount + (opts?.totalDelta ?? 0),
+        },
+        tax_lines: line.taxLines.map((t) => ({ rate_id: rateId, amount: t.amount })),
+        payments: [
+          {
+            id: nextUlid('01PAY'),
+            tender: 'cash' as const,
+            amount: cart.totalAmount + (opts?.totalDelta ?? 0),
+            change: 0,
+          },
+        ],
+        client_created_at: '2026-07-11T03:21:44.000Z',
+        local_seq: seq,
+      },
+    };
+  };
+
+  const makeMovementFact = (orderId: string, qtyDelta = -2) => ({
+    type: 'stock.movement' as const,
+    movement: {
+      id: nextUlid('01MOV'),
+      variant_id: A.variant,
+      location_id: A.location,
+      qty_delta: qtyDelta,
+      movement_type: 'sale' as const,
+      ref_order_id: orderId,
+    },
+  });
+
+  const makeBatch = (facts: SyncBatchInput['facts']): SyncBatchInput => ({
+    batch_id: nextUlid('01BAT'),
+    client: { register_id: A.register, app_version: '0.1.0' },
+    facts,
+  });
+
+  const counts = async () =>
+    db.tenants.forStore(A.store).tx(async (tx) => ({
+      orders: (await tx.select().from(orders)).length,
+      lines: (await tx.select().from(orderLines)).length,
+      payments: (await tx.select().from(payments)).length,
+      movements: (await tx.select().from(stockMovements)).length,
+      conflicts: (await tx.select().from(syncConflicts)).length,
+    }));
+
+  it('accepts a happy-path sale and projects inventory', async () => {
+    const before = await counts();
+    const onHandBefore = await db.tenants.forStore(A.store).tx(async (tx) =>
+      (await tx.select().from(inventoryLevels).where(eq(inventoryLevels.variantId, A.variant)))[0]
+        ?.onHand,
+    );
+    const orderFact = makeOrderFact();
+    const movementFact = makeMovementFact(orderFact.order.id);
+    const batch = makeBatch([orderFact, movementFact]);
+
+    const result = await syncService.ingestBatch(ctx, batch);
+    expect(result.acks).toEqual([
+      { id: orderFact.order.id, status: 'accepted' },
+      { id: movementFact.movement.id, status: 'accepted' },
+    ]);
+    expect(result.server_rev).toBeGreaterThan(0);
+
+    const after = await counts();
+    expect(after.orders).toBe(before.orders + 1);
+    expect(after.lines).toBe(before.lines + 1);
+    expect(after.payments).toBe(before.payments + 1);
+    expect(after.movements).toBe(before.movements + 1);
+    expect(after.conflicts).toBe(before.conflicts);
+
+    const rows = await db.tenants.forStore(A.store).tx(async (tx) => ({
+      order: (await tx.select().from(orders).where(eq(orders.id, orderFact.order.id)))[0],
+      movement: (await tx.select().from(stockMovements).where(eq(stockMovements.id, movementFact.movement.id)))[0],
+      level: (await tx.select().from(inventoryLevels).where(eq(inventoryLevels.variantId, A.variant)))[0],
+    }));
+    expect(rows.order).toMatchObject({
+      registerId: A.register,
+      locationId: A.location,
+      state: 'completed',
+      currency: 'SGD',
+      totalAmount: orderFact.order.totals.total,
+      localSeq: orderFact.order.local_seq,
+    });
+    expect(rows.movement).toMatchObject({ refType: 'order', refId: orderFact.order.id });
+    expect(rows.level?.onHand).toBe(Number(onHandBefore) - 2);
+  });
+
+  it('replays an identical batch verbatim without re-applying', async () => {
+    const orderFact = makeOrderFact();
+    const batch = makeBatch([orderFact, makeMovementFact(orderFact.order.id)]);
+    const first = await syncService.ingestBatch(ctx, batch);
+    const before = await counts();
+    const replay = await syncService.ingestBatch(ctx, batch);
+    expect(replay.acks).toEqual(first.acks);
+    expect(await counts()).toEqual(before);
+  });
+
+  it('dedupes a fact resent in a NEW batch', async () => {
+    const orderFact = makeOrderFact();
+    await syncService.ingestBatch(ctx, makeBatch([orderFact]));
+    const before = await counts();
+    const result = await syncService.ingestBatch(ctx, makeBatch([orderFact]));
+    expect(result.acks).toEqual([{ id: orderFact.order.id, status: 'duplicate' }]);
+    expect(await counts()).toEqual(before);
+  });
+
+  it('accepts a total mismatch but logs a total_mismatch conflict (golden rule)', async () => {
+    const orderFact = makeOrderFact({ totalDelta: 10 });
+    const result = await syncService.ingestBatch(ctx, makeBatch([orderFact]));
+    expect(result.acks[0]).toMatchObject({
+      id: orderFact.order.id,
+      status: 'accepted_with_conflict',
+      conflict: { type: 'total_mismatch' },
+    });
+    const rows = await db.tenants.forStore(A.store).tx(async (tx) => ({
+      order: (await tx.select().from(orders).where(eq(orders.id, orderFact.order.id)))[0],
+      conflict: (await tx.select().from(syncConflicts)).filter(
+        (c) => c.entityId === orderFact.order.id,
+      ),
+    }));
+    // the client's charged totals persist verbatim — reality wins
+    expect(rows.order?.totalAmount).toBe(orderFact.order.totals.total);
+    expect(rows.conflict).toHaveLength(1);
+    expect(rows.conflict[0]).toMatchObject({ conflictType: 'total_mismatch', entityType: 'order' });
+    const details = rows.conflict[0]?.details as { client_totals?: unknown; server_totals?: unknown };
+    expect(details.client_totals).toBeDefined();
+    expect(details.server_totals).toBeDefined();
+  });
+
+  it('flags an unknown tax rate as stale_reference and skips revalidation', async () => {
+    const orderFact = makeOrderFact({ rateId: '01TAXRGONEAAAAAAAAAAAAAAA1' });
+    const result = await syncService.ingestBatch(ctx, makeBatch([orderFact]));
+    expect(result.acks[0]).toMatchObject({
+      id: orderFact.order.id,
+      status: 'accepted_with_conflict',
+      conflict: { type: 'stale_reference' },
+    });
+  });
+
+  it('a replayed batch never double-logs conflicts', async () => {
+    const orderFact = makeOrderFact({ totalDelta: 25 });
+    const batch = makeBatch([orderFact]);
+    await syncService.ingestBatch(ctx, batch);
+    const before = await counts();
+    await syncService.ingestBatch(ctx, batch); // stored-acks replay
+    await syncService.ingestBatch(ctx, makeBatch([orderFact])); // per-fact dedupe
+    expect((await counts()).conflicts).toBe(before.conflicts);
+  });
+
+  it('rejects the whole batch atomically when one fact is unpersistable', async () => {
+    const orderFact = makeOrderFact();
+    const badMovement = {
+      type: 'stock.movement' as const,
+      movement: {
+        id: nextUlid('01MOV'),
+        variant_id: '01VARGONEAAAAAAAAAAAAAAAA1', // FK violation
+        location_id: A.location,
+        qty_delta: -1,
+        movement_type: 'sale' as const,
+        ref_order_id: orderFact.order.id,
+      },
+    };
+    const batchId = nextUlid('01BAT');
+    const before = await counts();
+    await expect(
+      syncService.ingestBatch(ctx, { batch_id: batchId, client: { register_id: A.register }, facts: [orderFact, badMovement] }),
+    ).rejects.toThrow();
+    expect(await counts()).toEqual(before); // first fact rolled back too
+
+    // fixed retry with the SAME idempotency key succeeds
+    const retry = await syncService.ingestBatch(ctx, {
+      batch_id: batchId,
+      client: { register_id: A.register },
+      facts: [orderFact, makeMovementFact(orderFact.order.id)],
+    });
+    expect(retry.acks.map((a) => a.status)).toEqual(['accepted', 'accepted']);
   });
 });

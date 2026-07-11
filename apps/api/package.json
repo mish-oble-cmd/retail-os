@@ -20,6 +20,7 @@
     "@nestjs/core": "^10.4.15",
     "@nestjs/platform-express": "^10.4.15",
     "@nestjs/swagger": "^8.1.0",
+    "@retailos/domain": "workspace:*",
     "@sentry/node": "^8.50.0",
     "argon2": "^0.41.1",
     "drizzle-orm": "^0.38.3",

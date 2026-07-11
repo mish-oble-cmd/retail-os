@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Post, Query, Req } from '@nestjs/common';
 import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
-import { activateDeviceSchema, changesQuerySchema } from './dto';
+import { activateDeviceSchema, changesQuerySchema, syncBatchSchema } from './dto';
 import { DevicesService } from './devices.service';
 import { SyncService } from './sync.service';
 
@@ -54,5 +54,15 @@ export class SyncController {
     const ctx = await this.devices.authenticate(req.headers.authorization);
     const { since, limit } = changesQuerySchema.parse(query);
     return this.sync.changes(ctx, since, limit);
+  }
+
+  @Post('batches')
+  @ApiOperation({
+    operationId: 'syncBatches',
+    summary: 'Ingest a batch of POS facts; idempotent by batch id and fact ULID (device token)',
+  })
+  async batches(@Body() body: unknown, @Req() req: Request) {
+    const ctx = await this.devices.authenticate(req.headers.authorization);
+    return this.sync.ingestBatch(ctx, syncBatchSchema.parse(body));
   }
 }

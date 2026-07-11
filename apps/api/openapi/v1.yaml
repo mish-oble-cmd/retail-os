@@ -269,6 +269,54 @@ paths:
       summary: Tax categories for pickers
       tags:
         - catalog
+  /api/v1/sync/activate:
+    post:
+      operationId: activateDevice
+      parameters: []
+      responses:
+        "201":
+          description: ""
+      summary: Exchange a one-time activation code for a device token (shown once)
+      tags: &a5
+        - sync
+  /api/v1/sync/bootstrap:
+    get:
+      operationId: syncBootstrap
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      summary: Full snapshot for a freshly activated register (device token)
+      tags: *a5
+  /api/v1/sync/changes:
+    get:
+      operationId: syncChanges
+      parameters:
+        - name: limit
+          required: false
+          in: query
+          schema:
+            type: number
+        - name: since
+          required: false
+          in: query
+          schema:
+            type: number
+      responses:
+        "200":
+          description: ""
+      summary: Delta feed above a sync_rev cursor, tombstones included (device token)
+      tags: *a5
+  /api/v1/sync/batches:
+    post:
+      operationId: syncBatches
+      parameters: []
+      responses:
+        "201":
+          description: ""
+      summary: Ingest a batch of POS facts; idempotent by batch id and fact ULID
+        (device token)
+      tags: *a5
   /api/v1/locations:
     get:
       operationId: listLocations
@@ -277,7 +325,7 @@ paths:
         "200":
           description: ""
       summary: All locations
-      tags: &a5
+      tags: &a6
         - settings
     post:
       operationId: createLocation
@@ -286,7 +334,7 @@ paths:
         "201":
           description: ""
       summary: Create a location
-      tags: *a5
+      tags: *a6
   /api/v1/locations/{id}:
     patch:
       operationId: updateLocation
@@ -300,7 +348,7 @@ paths:
         "200":
           description: ""
       summary: Update or deactivate a location
-      tags: *a5
+      tags: *a6
   /api/v1/registers:
     get:
       operationId: listRegisters
@@ -309,7 +357,7 @@ paths:
         "200":
           description: ""
       summary: All registers with grid layout and pending-activation state
-      tags: &a6
+      tags: &a7
         - settings
     post:
       operationId: createRegister
@@ -318,7 +366,7 @@ paths:
         "201":
           description: ""
       summary: Create a register at a location
-      tags: *a6
+      tags: *a7
   /api/v1/registers/{id}:
     patch:
       operationId: updateRegister
@@ -332,7 +380,7 @@ paths:
         "200":
           description: ""
       summary: Rename, (de)activate, or save the POS grid layout (ADM-16 designer)
-      tags: *a6
+      tags: *a7
   /api/v1/registers/{id}/activation-codes:
     post:
       operationId: issueActivationCode
@@ -347,7 +395,7 @@ paths:
           description: ""
       summary: Issue a one-time activation code (8-char, 24 h TTL); shown once,
         revokes any pending code
-      tags: *a6
+      tags: *a7
     delete:
       operationId: revokeActivationCode
       parameters:
@@ -360,7 +408,7 @@ paths:
         "204":
           description: ""
       summary: Revoke the pending activation code
-      tags: *a6
+      tags: *a7
 info:
   title: RetailOS API
   description: REST API per 03-architecture/api-design.md. Internal clients are

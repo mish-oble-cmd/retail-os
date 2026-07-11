@@ -8,7 +8,7 @@ import { roles, staff } from '../db/schema';
  * fixed roles — Owner `{ owner: true }` passes every check; the flag names
  * exist so the Phase 2 permission editor slots in without touching call sites.
  */
-export type PermissionFlag = 'catalog_edit' | 'settings_edit' | 'registers_edit';
+export type PermissionFlag = 'catalog_edit' | 'settings_edit' | 'registers_edit' | 'staff_edit';
 
 interface PermissionFlags {
   owner?: boolean;

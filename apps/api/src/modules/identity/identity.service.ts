@@ -75,6 +75,14 @@ export class IdentityService {
           name: 'Owner',
           permissions: { owner: true },
         });
+        // Fixed Phase 1 roles (FR-5.2): Cashier caps discounts at 10%; everything
+        // else needs Owner escalation at the register. Editor arrives Phase 2.
+        await tx.insert(roles).values({
+          id: ulid(),
+          storeId,
+          name: 'Cashier',
+          permissions: { cashier: true, max_discount_pct: 10 },
+        });
         await tx.insert(staff).values({
           id: staffId,
           storeId,

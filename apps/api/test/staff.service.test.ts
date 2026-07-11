@@ -5,6 +5,8 @@
  */
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { eq } from 'drizzle-orm';
+import { verifyPin } from '@retailos/domain';
 import type { DbService } from '../src/db/db.service';
 import { roles, staff, stores } from '../src/db/schema';
 import { StaffService } from '../src/modules/identity/staff.service';
@@ -112,5 +114,42 @@ describe('staff CRUD', () => {
     const roleList = await service.listRoles(A.store);
     expect(roleList.map((r) => r.name).sort()).toEqual(['Cashier', 'Owner']);
     expect(roleList.some((r) => r.id === B.ownerRole)).toBe(false);
+  });
+});
+
+describe('setPin', () => {
+  it('stores an argon2id hash the device library verifies (server argon2 → hash-wasm)', async () => {
+    const resource = await service.setPin(A.store, A.owner, A.cashier, '0042');
+    expect(resource.has_pin).toBe(true);
+    expect(JSON.stringify(resource)).not.toMatch(/argon2/);
+    const row = (
+      await db.tenants.forStore(A.store).tx((tx) =>
+        tx.select({ pinHash: staff.pinHash }).from(staff).where(eq(staff.id, A.cashier)),
+      )
+    )[0]!;
+    expect(row.pinHash).toMatch(/^\$argon2id\$/);
+    expect(await verifyPin('0042', row.pinHash)).toBe(true);   // the 1F golden path
+    expect(await verifyPin('4200', row.pinHash)).toBe(false);
+  });
+
+  it('bumps sync_rev so devices pull the change', async () => {
+    const before = (
+      await db.tenants.forStore(A.store).tx((tx) =>
+        tx.select({ rev: staff.syncRev }).from(staff).where(eq(staff.id, A.cashier)),
+      )
+    )[0]!.rev;
+    await service.setPin(A.store, A.owner, A.cashier, '731942');
+    const after = (
+      await db.tenants.forStore(A.store).tx((tx) =>
+        tx.select({ rev: staff.syncRev }).from(staff).where(eq(staff.id, A.cashier)),
+      )
+    )[0]!.rev;
+    expect(after).toBeGreaterThan(before);
+  });
+
+  it('cashiers cannot set PINs', async () => {
+    await expect(service.setPin(A.store, A.cashier, A.cashier, '1234')).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
   });
 });

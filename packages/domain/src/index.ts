@@ -26,3 +26,4 @@ export {
   type CartLineTotals,
   type Discount,
 } from './cart/cart.js';
+export { verifyPin } from './auth/pin.js';

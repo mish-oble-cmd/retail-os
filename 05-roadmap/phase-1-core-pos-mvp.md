@@ -42,9 +42,11 @@ Product/variant CRUD with options matrix, barcodes, images (S3 upload), categori
 
 _Shipped on `phase-1/catalog`: catalog/settings schema + RLS migrations, products/variants/barcodes/categories/tax-categories API, CSV import/export (FR-2.6 subset), MinIO presigned image upload, locations/registers + activation codes API, admin screens ADM-03/04/05/16, 76 API tests. Verified end-to-end against local Postgres (signup → product with variant matrix → mixed CSV import report → barcode search → activation code → grid layout). Found+fixed in verification: tenant wrapper now drops to `retailos_app` per transaction — dev superuser connections previously bypassed RLS._
 
-### 1B POS data layer
+### 1B POS data layer — ✅ complete 2026-07-11
 
 SQLite schema on device (catalog mirror + facts tables); bootstrap download; delta pull (catalog/settings/staff); outbox + pusher v1 (`/sync/bootstrap`, `/sync/changes`, `/sync/batches` minimal happy path + idempotent replay). _The full conflict matrix is Phase 3, but idempotency and atomic outbox writes are NOT deferrable._
+
+_Shipped on `phase-1/sync`: 0003_sync migration (devices, tombstones, order/payment facts, sync_batches dedupe, sync_conflicts, sync_rev on phase-0 tables), `/sync/activate|bootstrap|changes|batches` API (29 new API tests incl. replay + tenant-leak suites), `@retailos/sync` engine — better-sqlite3 device schema, atomic outbox, pusher with persisted batch idempotency keys, SyncClient facade (17 tests against an in-memory fake server). Verified end-to-end against local Postgres: signup → register activation → bootstrap → offline sale (domain math) → push → lost-ack replay + new-batch refire both dedupe → catalog change pulls down; final DB state: 1 order/1 line/1 payment, 0 conflicts, stock 100→98._
 
 **1B kickoff decisions (2026-07-11, proposed by AI, standing unless vetoed):** _(details + plan: `docs/superpowers/plans/2026-07-11-1b-pos-data-layer.md`)_
 

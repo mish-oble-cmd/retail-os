@@ -29,6 +29,7 @@ interface SellScreenProps {
   parkedCount: number;
   queuedFacts: number;
   onLock: () => void;
+  onOpenOrders: () => void;
   onCharge: () => void;
   onPark: () => void;
   onOpenParked: () => void;
@@ -53,6 +54,7 @@ export function SellScreen({
   parkedCount,
   queuedFacts,
   onLock,
+  onOpenOrders,
   onCharge,
   onPark,
   onOpenParked,
@@ -133,6 +135,9 @@ export function SellScreen({
             </span>
             {staff.name}
           </span>
+          <Button variant="secondary" size="pos" onClick={onOpenOrders}>
+            Orders
+          </Button>
           <Button variant="secondary" size="pos" onClick={onLock}>
             Lock
           </Button>

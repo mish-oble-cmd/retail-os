@@ -19,6 +19,8 @@ import { deviceStaffDirectory, type StaffDirectory } from './lib/staff-directory
 import { useIdleLock } from './lib/use-idle-lock';
 import { CustomSaleSheet } from './screens/CustomSaleSheet';
 import { DiscountSheet } from './screens/DiscountSheet';
+import { OrdersScreen } from './screens/OrdersScreen';
+import { RefundScreen } from './screens/RefundScreen';
 import { ParkCartDialog } from './screens/ParkCartDialog';
 import { ParkedCartsSheet } from './screens/ParkedCartsSheet';
 import { PaymentScreen } from './screens/PaymentScreen';
@@ -64,7 +66,7 @@ function BootScreen() {
   );
 }
 
-type Screen = 'sell' | 'payment' | 'receipt';
+type Screen = 'sell' | 'payment' | 'receipt' | 'orders' | 'refund';
 
 type DiscountTarget = { kind: 'cart' } | { kind: 'line'; key: string };
 
@@ -77,6 +79,7 @@ function Register({ device }: { device: Device }) {
   const [discountTarget, setDiscountTarget] = useState<DiscountTarget | null>(null);
   const [customSaleOpen, setCustomSaleOpen] = useState(false);
   const [completed, setCompleted] = useState<{ sale: LocalSaleInput; change: number } | null>(null);
+  const [refundOrderId, setRefundOrderId] = useState<string | null>(null);
   const [parkOpen, setParkOpen] = useState(false);
   const [parkedOpen, setParkedOpen] = useState(false);
   const [parked, setParked] = useState<ParkedCartSummary[]>([]);
@@ -160,6 +163,7 @@ function Register({ device }: { device: Device }) {
           parkedCount={parkedCount}
           queuedFacts={queuedFacts}
           onLock={lock}
+          onOpenOrders={() => setScreen('orders')}
           onCharge={() => setScreen('payment')}
           onPark={() => setParkOpen(true)}
           onOpenParked={() => setParkedOpen(true)}
@@ -252,6 +256,33 @@ function Register({ device }: { device: Device }) {
           onNewSale={() => {
             setCompleted(null);
             setScreen('sell');
+          }}
+        />
+      )}
+
+      {staff && screen === 'orders' && (
+        <OrdersScreen
+          driver={driver}
+          store={store}
+          onBack={() => setScreen('sell')}
+          onStartRefund={(orderId) => {
+            setRefundOrderId(orderId);
+            setScreen('refund');
+          }}
+        />
+      )}
+
+      {staff && screen === 'refund' && refundOrderId && session && (
+        <RefundScreen
+          driver={driver}
+          store={store}
+          orderId={refundOrderId}
+          staff={{ id: session.staffId, roleId: session.roleId }}
+          onBack={() => setScreen('orders')}
+          onDone={() => {
+            refreshCounters();
+            setRefundOrderId(null);
+            setScreen('orders');
           }}
         />
       )}

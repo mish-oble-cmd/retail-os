@@ -444,6 +444,7 @@ export const orders = pgTable(
     registerId: text('register_id').notNull(),
     locationId: text('location_id').notNull(),
     staffId: text('staff_id'),
+    shiftId: text('shift_id'),
     customerId: text('customer_id'),
     number: text('number').notNull(),
     state: text('state', {
@@ -603,6 +604,76 @@ export const refundLines = pgTable(
       name: 'refund_lines_refund_fk',
       columns: [table.storeId, table.refundId],
       foreignColumns: [refunds.storeId, refunds.id],
+    }),
+  ],
+);
+
+/** Shift: cash-drawer lifecycle for a register (1D, FR-6.1). Closed rows carry the Z snapshot. */
+export const shifts = pgTable(
+  'shifts',
+  {
+    id: text('id').primaryKey(),
+    storeId: text('store_id')
+      .notNull()
+      .references(() => stores.id),
+    registerId: text('register_id').notNull(),
+    locationId: text('location_id').notNull(),
+    openedByStaffId: text('opened_by_staff_id'),
+    openedAt: timestamp('opened_at', { withTimezone: true }),
+    openingFloat: bigint('opening_float', { mode: 'number' }).notNull(),
+    closedByStaffId: text('closed_by_staff_id'),
+    closedAt: timestamp('closed_at', { withTimezone: true }),
+    closingCounted: bigint('closing_counted', { mode: 'number' }),
+    closingExpected: bigint('closing_expected', { mode: 'number' }),
+    overShort: bigint('over_short', { mode: 'number' }),
+    zSnapshot: jsonb('z_snapshot'),
+    state: text('state', { enum: ['open', 'closed'] })
+      .notNull()
+      .default('open'),
+    localSeq: bigint('local_seq', { mode: 'number' }),
+    receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique('shifts_store_id_unique').on(table.storeId, table.id),
+    index('shifts_store_register_idx').on(table.storeId, table.registerId),
+    foreignKey({
+      name: 'shifts_register_fk',
+      columns: [table.storeId, table.registerId],
+      foreignColumns: [registers.storeId, registers.id],
+    }),
+    foreignKey({
+      name: 'shifts_opened_by_fk',
+      columns: [table.storeId, table.openedByStaffId],
+      foreignColumns: [staff.storeId, staff.id],
+    }),
+  ],
+);
+
+/** Cash movement: paid in/out and no-sale drawer opens (1D, FR-6.1). Append-only. */
+export const cashMovements = pgTable(
+  'cash_movements',
+  {
+    id: text('id').primaryKey(),
+    storeId: text('store_id')
+      .notNull()
+      .references(() => stores.id),
+    shiftId: text('shift_id').notNull(),
+    kind: text('kind', { enum: ['paid_in', 'paid_out', 'no_sale'] }).notNull(),
+    amount: bigint('amount', { mode: 'number' }).notNull().default(0),
+    reason: text('reason').notNull().default(''),
+    staffId: text('staff_id'),
+    approvedByStaffId: text('approved_by_staff_id'),
+    clientCreatedAt: timestamp('client_created_at', { withTimezone: true }),
+    receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('cash_movements_store_shift_idx').on(table.storeId, table.shiftId),
+    foreignKey({
+      name: 'cash_movements_shift_fk',
+      columns: [table.storeId, table.shiftId],
+      foreignColumns: [shifts.storeId, shifts.id],
     }),
   ],
 );

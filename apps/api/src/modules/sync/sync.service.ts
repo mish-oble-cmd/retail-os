@@ -5,6 +5,7 @@ import { ulid } from 'ulid';
 import { DbService, type TenantTx } from '../../db/db.service';
 import {
   barcodes,
+  cashMovements,
   categories,
   inventoryLevels,
   locations,
@@ -16,6 +17,7 @@ import {
   refunds,
   registers,
   roles,
+  shifts,
   staff,
   stockMovements,
   stores,
@@ -27,7 +29,15 @@ import {
   variants,
 } from '../../db/schema';
 import type { DeviceContext } from './devices.service';
-import type { MovementFact, OrderFact, RefundFact, SyncBatchInput } from './dto';
+import type {
+  CashMovementFact,
+  MovementFact,
+  OrderFact,
+  RefundFact,
+  ShiftClosedFact,
+  ShiftOpenedFact,
+  SyncBatchInput,
+} from './dto';
 
 /**
  * Down-sync surface (offline-sync-strategy.md): bootstrap snapshot + delta
@@ -393,6 +403,12 @@ export class SyncService {
           acks.push(await this.ingestOrder(tx, ctx, storeRow, ratesById, fact));
         } else if (fact.type === 'refund.completed') {
           acks.push(await this.ingestRefund(tx, ctx, fact));
+        } else if (fact.type === 'shift.opened') {
+          acks.push(await this.ingestShiftOpened(tx, ctx, fact));
+        } else if (fact.type === 'cash.movement') {
+          acks.push(await this.ingestCashMovement(tx, ctx, fact));
+        } else if (fact.type === 'shift.closed') {
+          acks.push(await this.ingestShiftClosed(tx, ctx, fact));
         } else {
           acks.push(await this.ingestMovement(tx, ctx, fact));
         }
@@ -479,6 +495,7 @@ export class SyncService {
       registerId: ctx.registerId,
       locationId: ctx.locationId,
       staffId: order.staff_id ?? null,
+      shiftId: order.shift_id ?? null,
       customerId: order.customer_id ?? null,
       number: order.number,
       state: 'completed',
@@ -643,5 +660,84 @@ export class SyncService {
         set: { onHand: sql`${inventoryLevels.onHand} + ${movement.qty_delta}` },
       });
     return { id: movement.id, status: 'accepted' };
+  }
+
+  private async ingestShiftOpened(
+    tx: TenantTx,
+    ctx: DeviceContext,
+    fact: ShiftOpenedFact,
+  ): Promise<FactAck> {
+    const shift = fact.shift;
+    const [duplicate] = await tx.select({ id: shifts.id }).from(shifts).where(eq(shifts.id, shift.id));
+    if (duplicate) return { id: shift.id, status: 'duplicate' };
+
+    await tx.insert(shifts).values({
+      id: shift.id,
+      storeId: ctx.storeId,
+      registerId: shift.register_id,
+      locationId: shift.location_id,
+      openedByStaffId: shift.opened_by_staff_id,
+      openedAt: new Date(shift.opened_at),
+      openingFloat: shift.opening_float,
+      state: 'open',
+    });
+    return { id: shift.id, status: 'accepted' };
+  }
+
+  private async ingestCashMovement(
+    tx: TenantTx,
+    ctx: DeviceContext,
+    fact: CashMovementFact,
+  ): Promise<FactAck> {
+    const movement = fact.movement;
+    const [duplicate] = await tx
+      .select({ id: cashMovements.id })
+      .from(cashMovements)
+      .where(eq(cashMovements.id, movement.id));
+    if (duplicate) return { id: movement.id, status: 'duplicate' };
+
+    await tx.insert(cashMovements).values({
+      id: movement.id,
+      storeId: ctx.storeId,
+      shiftId: movement.shift_id,
+      kind: movement.kind,
+      amount: movement.amount,
+      reason: movement.reason,
+      staffId: movement.staff_id,
+      approvedByStaffId: movement.approved_by_staff_id ?? null,
+      clientCreatedAt: new Date(movement.client_created_at),
+    });
+    return { id: movement.id, status: 'accepted' };
+  }
+
+  private async ingestShiftClosed(
+    tx: TenantTx,
+    ctx: DeviceContext,
+    fact: ShiftClosedFact,
+  ): Promise<FactAck> {
+    const shift = fact.shift;
+    // The close fact updates the open row. A missing/already-closed shift means
+    // the open fact hasn't synced (or this is a replay) — roll the batch back to
+    // retry, mirroring how a refund waits for its order (1C).
+    const [existing] = await tx
+      .select({ state: shifts.state })
+      .from(shifts)
+      .where(and(eq(shifts.id, shift.id), eq(shifts.storeId, ctx.storeId)));
+    if (!existing) throw new Error(`ingest: shift.closed for unknown shift ${shift.id}`);
+    if (existing.state === 'closed') return { id: shift.id, status: 'duplicate' };
+
+    await tx
+      .update(shifts)
+      .set({
+        state: 'closed',
+        closedByStaffId: shift.closed_by_staff_id,
+        closedAt: new Date(shift.closed_at),
+        closingCounted: shift.closing_counted,
+        closingExpected: shift.closing_expected,
+        overShort: shift.over_short,
+        zSnapshot: shift.z,
+      })
+      .where(and(eq(shifts.id, shift.id), eq(shifts.storeId, ctx.storeId)));
+    return { id: shift.id, status: 'accepted' };
   }
 }

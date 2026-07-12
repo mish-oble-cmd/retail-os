@@ -9,6 +9,7 @@ import { api, type MeResource } from '../lib/api';
 const NAV: Array<{ label: string; href: string; enabled: boolean }> = [
   { label: 'Home', href: '/dashboard', enabled: true },
   { label: 'Orders', href: '/orders', enabled: false },
+  { label: 'Shifts', href: '/shifts', enabled: true },
   { label: 'Products', href: '/products', enabled: true },
   { label: 'Inventory', href: '/inventory', enabled: false },
   { label: 'Customers', href: '/customers', enabled: false },

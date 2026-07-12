@@ -236,6 +236,61 @@ export const settingsApi = {
     api.delete(p(`${V1}/registers/${registerId}/activation-codes`)),
 };
 
+export interface ZSnapshotResource {
+  grossSales: number;
+  netSales: number;
+  taxCollected: number;
+  discounts: number;
+  refunds: number;
+  txnCount: number;
+  tenders: { cash: number; card_manual: number };
+  cashRefunds: number;
+  byStaff: Array<{ staffId: string; netSales: number; txnCount: number }>;
+  openingFloat: number;
+  paidIn: number;
+  paidOut: number;
+  expectedCash: number;
+  countedCash: number;
+  overShort: number;
+}
+
+export interface ShiftSummaryResource {
+  id: string;
+  currency: string;
+  register_id: string;
+  location_id: string;
+  opened_by: string | null;
+  opened_at: string | null;
+  closed_at: string | null;
+  state: 'open' | 'closed';
+  opening_float: number;
+  over_short: number | null;
+  gross_sales: number | null;
+}
+
+export interface CashMovementResource {
+  id: string;
+  kind: 'paid_in' | 'paid_out' | 'no_sale';
+  amount: number;
+  reason: string;
+  staff_id: string | null;
+  approved_by_staff_id: string | null;
+  client_created_at: string | null;
+}
+
+export interface ShiftDetailResource extends ShiftSummaryResource {
+  closed_by: string | null;
+  closing_counted: number | null;
+  closing_expected: number | null;
+  z: ZSnapshotResource | null;
+  movements: CashMovementResource[];
+}
+
+export const shiftsApi = {
+  listShifts: () => api.get<{ items: ShiftSummaryResource[] }>(p(`${V1}/shifts`)),
+  getShift: (id: string) => api.get<ShiftDetailResource>(p(`${V1}/shifts/${id}`)),
+};
+
 export const staffApi = {
   listStaff: () => api.get<{ items: StaffResource[] }>(p(`${V1}/staff`)),
   listRoles: () => api.get<{ items: RoleResource[] }>(p(`${V1}/roles`)),

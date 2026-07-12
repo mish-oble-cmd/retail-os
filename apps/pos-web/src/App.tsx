@@ -1,13 +1,26 @@
-import { getStoreMeta, listParkedCarts, pendingCount, type BrowserDriverHandle, type SqlDriver, type StoreMeta } from '@retailos/sync';
+import {
+  discardParkedCart,
+  getStoreMeta,
+  listParkedCarts,
+  parkCart,
+  pendingCount,
+  retrieveParkedCart,
+  type BrowserDriverHandle,
+  type LocalSaleInput,
+  type ParkedCartSummary,
+  type SqlDriver,
+  type StoreMeta,
+} from '@retailos/sync';
 import type { Discount } from '@retailos/domain';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useCart } from './lib/cart';
+import { useCart, type Cart } from './lib/cart';
 import { listTaxCategories, openDevice, type TaxCategoryOption } from './lib/device';
 import { deviceStaffDirectory, type StaffDirectory } from './lib/staff-directory';
 import { useIdleLock } from './lib/use-idle-lock';
-import type { LocalSaleInput } from '@retailos/sync';
 import { CustomSaleSheet } from './screens/CustomSaleSheet';
 import { DiscountSheet } from './screens/DiscountSheet';
+import { ParkCartDialog } from './screens/ParkCartDialog';
+import { ParkedCartsSheet } from './screens/ParkedCartsSheet';
 import { PaymentScreen } from './screens/PaymentScreen';
 import { PinLockScreen } from './screens/PinLockScreen';
 import { ReceiptScreen } from './screens/ReceiptScreen';
@@ -64,6 +77,10 @@ function Register({ device }: { device: Device }) {
   const [discountTarget, setDiscountTarget] = useState<DiscountTarget | null>(null);
   const [customSaleOpen, setCustomSaleOpen] = useState(false);
   const [completed, setCompleted] = useState<{ sale: LocalSaleInput; change: number } | null>(null);
+  const [parkOpen, setParkOpen] = useState(false);
+  const [parkedOpen, setParkedOpen] = useState(false);
+  const [parked, setParked] = useState<ParkedCartSummary[]>([]);
+  const [staffNameById, setStaffNameById] = useState<Map<string, string>>(new Map());
   const [taxCategories] = useState<TaxCategoryOption[]>(() => listTaxCategories(driver));
   const cart = useCart(store.currency, store.priceMode);
 
@@ -71,16 +88,65 @@ function Register({ device }: { device: Device }) {
   useIdleLock(session !== null, lock);
 
   const refreshCounters = useCallback(() => {
-    setParkedCount(listParkedCarts(driver).length);
+    const list = listParkedCarts(driver);
+    setParked(list);
+    setParkedCount(list.length);
     setQueuedFacts(pendingCount(driver));
   }, [driver]);
   useEffect(() => {
     refreshCounters();
-  }, [refreshCounters]);
+    void directory.listStaff().then((rows) => setStaffNameById(new Map(rows.map((s) => [s.id, s.name]))));
+  }, [refreshCounters, directory]);
 
   const staff = useMemo(
     () => (session ? { id: session.staffId, name: session.name } : null),
     [session],
+  );
+
+  const doPark = useCallback(
+    (name: string) => {
+      parkCart(driver, {
+        name,
+        staffId: session?.staffId ?? null,
+        cart: cart.cart,
+        itemCount: cart.itemCount,
+        totalAmount: cart.totals.totalAmount,
+        currency: store.currency,
+      });
+      cart.clear();
+      setParkOpen(false);
+      refreshCounters();
+    },
+    [driver, session, cart, store.currency, refreshCounters],
+  );
+
+  const doRetrieve = useCallback(
+    (id: string) => {
+      // Collision rule: a non-empty current cart is re-parked before retrieving.
+      if (cart.lines.length > 0) {
+        parkCart(driver, {
+          name: `Unnamed — ${new Date().toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })}`,
+          staffId: session?.staffId ?? null,
+          cart: cart.cart,
+          itemCount: cart.itemCount,
+          totalAmount: cart.totals.totalAmount,
+          currency: store.currency,
+        });
+      }
+      const retrieved = retrieveParkedCart<Cart>(driver, id);
+      if (retrieved) cart.replace(retrieved.cart);
+      setParkedOpen(false);
+      refreshCounters();
+    },
+    [driver, session, cart, store.currency, refreshCounters],
+  );
+
+  const doDiscard = useCallback(
+    (id: string) => {
+      discardParkedCart(driver, id);
+      refreshCounters();
+    },
+    [driver, refreshCounters],
   );
 
   return (
@@ -95,12 +161,8 @@ function Register({ device }: { device: Device }) {
           queuedFacts={queuedFacts}
           onLock={lock}
           onCharge={() => setScreen('payment')}
-          onPark={() => {
-            /* wired in T9 */
-          }}
-          onOpenParked={() => {
-            /* wired in T9 */
-          }}
+          onPark={() => setParkOpen(true)}
+          onOpenParked={() => setParkedOpen(true)}
           onOpenDiscount={() => setDiscountTarget({ kind: 'cart' })}
           onOpenLineDiscount={(key) => setDiscountTarget({ kind: 'line', key })}
           onOpenCustomSale={() => setCustomSaleOpen(true)}
@@ -138,6 +200,30 @@ function Register({ device }: { device: Device }) {
             setCustomSaleOpen(false);
           }}
           onClose={() => setCustomSaleOpen(false)}
+        />
+      )}
+
+      {staff && parkOpen && (
+        <ParkCartDialog
+          itemCount={cart.itemCount}
+          total={cart.totals.totalAmount}
+          currency={store.currency}
+          parkedCount={parkedCount}
+          onPark={doPark}
+          onViewParked={() => { setParkOpen(false); setParkedOpen(true); }}
+          onClose={() => setParkOpen(false)}
+        />
+      )}
+
+      {staff && parkedOpen && (
+        <ParkedCartsSheet
+          parked={parked}
+          currency={store.currency}
+          currentItemCount={cart.itemCount}
+          staffNameById={staffNameById}
+          onRetrieve={doRetrieve}
+          onDiscard={doDiscard}
+          onClose={() => setParkedOpen(false)}
         />
       )}
 

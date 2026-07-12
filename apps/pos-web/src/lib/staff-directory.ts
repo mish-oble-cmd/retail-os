@@ -1,4 +1,5 @@
 import { argon2id } from 'hash-wasm';
+import type { SqlDriver } from '@retailos/sync';
 
 /**
  * Where the lock screen gets its staff. 1C implements this over the synced
@@ -30,6 +31,28 @@ async function demoHash(pin: string): Promise<string> {
     hashLength: 32,
     outputType: 'encoded',
   });
+}
+
+/**
+ * Reads staff from the synced device mirror (1C). The lock screen verifies the
+ * entered PIN against each `pin_hash` via `verifyPin` — the same offline
+ * argon2id check the demo directory exercised, now over real device rows.
+ */
+export function deviceStaffDirectory(driver: SqlDriver): StaffDirectory {
+  return {
+    listStaff: async () =>
+      driver
+        .all<{ id: string; name: string; role_id: string; pin_hash: string | null; active: number }>(
+          `SELECT id, name, role_id, pin_hash, active FROM staff ORDER BY name`,
+        )
+        .map((row) => ({
+          id: row.id,
+          name: row.name,
+          roleId: row.role_id,
+          pinHash: row.pin_hash,
+          active: row.active === 1,
+        })),
+  };
 }
 
 /** Demo data until 1C wires the device mirror. Ana 0042, Ben 1234. */

@@ -33,6 +33,7 @@ interface SellScreenProps {
   onPark: () => void;
   onOpenParked: () => void;
   onOpenDiscount: () => void;
+  onOpenLineDiscount: (lineKey: string) => void;
   onOpenCustomSale: () => void;
 }
 
@@ -56,6 +57,7 @@ export function SellScreen({
   onPark,
   onOpenParked,
   onOpenDiscount,
+  onOpenLineDiscount,
   onOpenCustomSale,
 }: SellScreenProps) {
   const [categories, setCategories] = useState<CategoryRow[]>([]);
@@ -208,7 +210,9 @@ export function SellScreen({
                 if (!line) return null;
                 return (
                   <div key={line.key} className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 border-b border-border px-4 py-2.5">
-                    <div className="text-pos-body font-medium text-ink">{line.name}</div>
+                    <button className="text-left text-pos-body font-medium text-ink hover:text-primary" onClick={() => onOpenLineDiscount(line.key)}>
+                      {line.name}
+                    </button>
                     <div className="self-center text-pos-body font-medium">
                       <MoneyText amount={lineTotal.totalAmount} currency={store.currency} />
                     </div>

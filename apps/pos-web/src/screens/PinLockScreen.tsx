@@ -42,7 +42,7 @@ export function PinLockScreen({
   directory: StaffDirectory;
   storeName: string;
   registerName: string;
-  onUnlock: (staff: { id: string; name: string }) => void;
+  onUnlock: (staff: { id: string; name: string; roleId: string }) => void;
 }) {
   const [staff, setStaff] = useState<StaffEntry[] | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -98,7 +98,7 @@ export function PinLockScreen({
         setPin('');
         setSelectedId(null);
         setPinLockState(initialPinLockState());
-        onUnlock({ id: attemptedStaff.id, name: attemptedStaff.name });
+        onUnlock({ id: attemptedStaff.id, name: attemptedStaff.name, roleId: attemptedStaff.roleId });
       } else if (attemptedPin.length === 6) {
         recordMiss();
       }

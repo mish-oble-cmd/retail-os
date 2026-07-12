@@ -2,8 +2,10 @@ import { argon2id } from 'hash-wasm';
 import {
   migrateDeviceDb,
   openBrowserDriver,
+  taxRatesByCategory,
   type BrowserDriverHandle,
   type SqlDriver,
+  type TaxRateRow,
 } from '@retailos/sync';
 // Vite serves the sql.js wasm from node_modules as a hashed asset URL.
 import sqlWasmUrl from 'sql.js/dist/sql-wasm.wasm?url';
@@ -108,9 +110,11 @@ async function seedDemoIfEmpty(driver: SqlDriver): Promise<void> {
         [s.id, s.name, s.roleId, staffHashes[i] ?? null, s.active],
       );
     });
-    driver.run(`INSERT INTO tax_categories (id, name, sync_rev) VALUES (?, 'Standard', 1)`, [
-      TAX_CATEGORY_ID,
-    ]);
+    driver.run(
+      `INSERT INTO tax_categories (id, name, sync_rev)
+       VALUES (?, 'Standard', 1), ('TAXCEXMP', 'VAT-exempt', 1), ('TAXCZERO', 'Zero-rated', 1)`,
+      [TAX_CATEGORY_ID],
+    );
     driver.run(
       `INSERT INTO tax_rates (id, tax_category_id, name, rate_bp, sync_rev) VALUES (?, ?, 'VAT 12%', 1200, 1)`,
       [TAX_RATE_ID, TAX_CATEGORY_ID],
@@ -149,3 +153,17 @@ async function seedDemoIfEmpty(driver: SqlDriver): Promise<void> {
 }
 
 export const DEMO_LOCATION_ID = LOCATION_ID;
+
+export interface TaxCategoryOption {
+  id: string;
+  name: string;
+  rates: TaxRateRow[];
+}
+
+/** Tax categories with their resolved rates — the custom-sale tax picker. */
+export function listTaxCategories(driver: SqlDriver): TaxCategoryOption[] {
+  const byCat = taxRatesByCategory(driver);
+  return driver
+    .all<{ id: string; name: string }>(`SELECT id, name FROM tax_categories ORDER BY name`)
+    .map((cat) => ({ id: cat.id, name: cat.name, rates: byCat.get(cat.id) ?? [] }));
+}

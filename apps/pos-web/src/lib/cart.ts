@@ -8,6 +8,13 @@ import type { SellableVariant, TaxRateRow } from '@retailos/sync';
  * money itself, so totals are identical to the server's revalidation (AD-2).
  */
 
+export interface DiscountMeta {
+  /** required reason, printed itemized on the receipt (FR-1.2) */
+  reason: string;
+  /** Owner staff id when the discount needed escalation (FR-5.2), else null */
+  approvedBy: string | null;
+}
+
 export interface CartLine {
   /** stable row key (a line, not a variant — custom sales have no variant) */
   key: string;
@@ -17,12 +24,14 @@ export interface CartLine {
   qty: number;
   taxRates: { id: string; rateBp: number }[];
   discounts: Discount[];
+  discountMeta?: DiscountMeta;
   isCustom?: boolean;
 }
 
 export interface Cart {
   lines: CartLine[];
   cartDiscount: Discount | null;
+  cartDiscountMeta?: DiscountMeta;
 }
 
 const emptyCart: Cart = { lines: [], cartDiscount: null };
@@ -39,8 +48,8 @@ export interface UseCart {
   addCustom(input: { name: string; unitPriceAmount: number; taxRates: TaxRateRow[] }): void;
   setQty(key: string, qty: number): void;
   removeLine(key: string): void;
-  setLineDiscount(key: string, discount: Discount | null): void;
-  setCartDiscount(discount: Discount | null): void;
+  setLineDiscount(key: string, discount: Discount | null, meta?: DiscountMeta): void;
+  setCartDiscount(discount: Discount | null, meta?: DiscountMeta): void;
   replace(cart: Cart): void;
   clear(): void;
 }
@@ -135,16 +144,22 @@ export function useCart(currency: string, priceMode: PriceMode): UseCart {
     removeLine(key) {
       setCart((current) => ({ ...current, lines: current.lines.filter((line) => line.key !== key) }));
     },
-    setLineDiscount(key, discount) {
+    setLineDiscount(key, discount, meta) {
       setCart((current) => ({
         ...current,
         lines: current.lines.map((line) =>
-          line.key === key ? { ...line, discounts: discount ? [discount] : [] } : line,
+          line.key === key
+            ? { ...line, discounts: discount ? [discount] : [], discountMeta: discount ? meta : undefined }
+            : line,
         ),
       }));
     },
-    setCartDiscount(discount) {
-      setCart((current) => ({ ...current, cartDiscount: discount }));
+    setCartDiscount(discount, meta) {
+      setCart((current) => ({
+        ...current,
+        cartDiscount: discount,
+        cartDiscountMeta: discount ? meta : undefined,
+      }));
     },
     replace(next) {
       setCart(next);

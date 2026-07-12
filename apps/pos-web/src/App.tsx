@@ -1,9 +1,12 @@
 import { getStoreMeta, listParkedCarts, pendingCount, type BrowserDriverHandle, type SqlDriver, type StoreMeta } from '@retailos/sync';
+import type { Discount } from '@retailos/domain';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useCart } from './lib/cart';
-import { openDevice } from './lib/device';
+import { listTaxCategories, openDevice, type TaxCategoryOption } from './lib/device';
 import { deviceStaffDirectory, type StaffDirectory } from './lib/staff-directory';
 import { useIdleLock } from './lib/use-idle-lock';
+import { CustomSaleSheet } from './screens/CustomSaleSheet';
+import { DiscountSheet } from './screens/DiscountSheet';
 import { PinLockScreen } from './screens/PinLockScreen';
 import { SellScreen } from './screens/SellScreen';
 
@@ -47,12 +50,17 @@ function BootScreen() {
 
 type Screen = 'sell' | 'payment';
 
+type DiscountTarget = { kind: 'cart' } | { kind: 'line'; key: string };
+
 function Register({ device }: { device: Device }) {
   const { driver, store, directory } = device;
-  const [session, setSession] = useState<{ staffId: string; name: string } | null>(null);
+  const [session, setSession] = useState<{ staffId: string; name: string; roleId: string } | null>(null);
   const [screen, setScreen] = useState<Screen>('sell');
   const [parkedCount, setParkedCount] = useState(0);
   const [queuedFacts, setQueuedFacts] = useState(0);
+  const [discountTarget, setDiscountTarget] = useState<DiscountTarget | null>(null);
+  const [customSaleOpen, setCustomSaleOpen] = useState(false);
+  const [taxCategories] = useState<TaxCategoryOption[]>(() => listTaxCategories(driver));
   const cart = useCart(store.currency, store.priceMode);
 
   const lock = useCallback(() => setSession(null), []);
@@ -89,12 +97,43 @@ function Register({ device }: { device: Device }) {
           onOpenParked={() => {
             /* wired in T9 */
           }}
-          onOpenDiscount={() => {
-            /* wired in T6 */
+          onOpenDiscount={() => setDiscountTarget({ kind: 'cart' })}
+          onOpenLineDiscount={(key) => setDiscountTarget({ kind: 'line', key })}
+          onOpenCustomSale={() => setCustomSaleOpen(true)}
+        />
+      )}
+
+      {staff && discountTarget && (
+        <DiscountSheet
+          driver={driver}
+          currency={store.currency}
+          roleId={session!.roleId}
+          target={discountTargetInfo(discountTarget, cart)}
+          existing={existingDiscount(discountTarget, cart)}
+          onApply={(discount, approvedBy, reason) => {
+            const meta = { reason, approvedBy };
+            if (discountTarget.kind === 'cart') cart.setCartDiscount(discount, meta);
+            else cart.setLineDiscount(discountTarget.key, discount, meta);
+            setDiscountTarget(null);
           }}
-          onOpenCustomSale={() => {
-            /* wired in T6 */
+          onRemove={() => {
+            if (discountTarget.kind === 'cart') cart.setCartDiscount(null);
+            else cart.setLineDiscount(discountTarget.key, null);
+            setDiscountTarget(null);
           }}
+          onClose={() => setDiscountTarget(null)}
+        />
+      )}
+
+      {staff && customSaleOpen && (
+        <CustomSaleSheet
+          currency={store.currency}
+          taxCategories={taxCategories}
+          onAdd={(input) => {
+            cart.addCustom(input);
+            setCustomSaleOpen(false);
+          }}
+          onClose={() => setCustomSaleOpen(false)}
         />
       )}
 
@@ -108,12 +147,32 @@ function Register({ device }: { device: Device }) {
             directory={directory}
             storeName={store.name}
             registerName="Register 2"
-            onUnlock={({ id, name }) => setSession({ staffId: id, name })}
+            onUnlock={({ id, name, roleId }) => setSession({ staffId: id, name, roleId })}
           />
         </div>
       )}
     </div>
   );
+}
+
+// Discount targets a whole cart (base = pre-cart-discount total) or one line
+// (base = its gross). Both feed the domain discount rules unchanged.
+function discountTargetInfo(
+  target: DiscountTarget,
+  cart: ReturnType<typeof useCart>,
+): { label: string; total: number } {
+  if (target.kind === 'cart') {
+    const base = cart.totals.lines.reduce((sum, l) => sum + l.netAmount + l.cartDiscountAmount, 0);
+    return { label: 'Entire cart', total: base };
+  }
+  const line = cart.lines.find((l) => l.key === target.key);
+  if (!line) return { label: 'Line', total: 0 };
+  return { label: `${line.name} × ${line.qty}`, total: line.unitPriceAmount * line.qty };
+}
+
+function existingDiscount(target: DiscountTarget, cart: ReturnType<typeof useCart>): Discount | null {
+  if (target.kind === 'cart') return cart.cart.cartDiscount;
+  return cart.lines.find((l) => l.key === target.key)?.discounts[0] ?? null;
 }
 
 // Placeholder until T7 builds POS-04 Payment.

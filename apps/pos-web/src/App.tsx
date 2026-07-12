@@ -10,6 +10,7 @@ import { CustomSaleSheet } from './screens/CustomSaleSheet';
 import { DiscountSheet } from './screens/DiscountSheet';
 import { PaymentScreen } from './screens/PaymentScreen';
 import { PinLockScreen } from './screens/PinLockScreen';
+import { ReceiptScreen } from './screens/ReceiptScreen';
 import { SellScreen } from './screens/SellScreen';
 
 interface Device {
@@ -157,10 +158,11 @@ function Register({ device }: { device: Device }) {
       )}
 
       {staff && screen === 'receipt' && completed && (
-        <ReceiptPlaceholder
+        <ReceiptScreen
+          store={store}
+          staffName={staff.name}
+          sale={completed.sale}
           change={completed.change}
-          total={completed.sale.totals.total}
-          currency={store.currency}
           onNewSale={() => {
             setCompleted(null);
             setScreen('sell');
@@ -200,20 +202,4 @@ function discountTargetInfo(
 function existingDiscount(target: DiscountTarget, cart: ReturnType<typeof useCart>): Discount | null {
   if (target.kind === 'cart') return cart.cart.cartDiscount;
   return cart.lines.find((l) => l.key === target.key)?.discounts[0] ?? null;
-}
-
-// Placeholder until T8 builds POS-05 Receipt.
-function ReceiptPlaceholder({ change, total, currency, onNewSale }: { change: number; total: number; currency: string; onNewSale: () => void }) {
-  const fmt = (n: number) => (n / 100).toLocaleString('en-PH', { style: 'currency', currency });
-  return (
-    <div className="flex h-screen flex-col items-center justify-center gap-4 bg-bg">
-      <p className="text-h2 font-semibold text-success">Sale complete</p>
-      <p className="text-pos-body text-ink-muted">Total {fmt(total)}</p>
-      {change > 0 && <p className="text-pos-total font-semibold text-ink font-money tabular-nums">Change {fmt(change)}</p>}
-      <p className="text-body-sm text-ink-muted">Receipt (print / email / QR) arrives in T8.</p>
-      <button onClick={onNewSale} className="min-h-touch-pos rounded-card bg-primary px-8 py-3 text-pos-body font-semibold text-white">
-        New sale
-      </button>
-    </div>
-  );
 }

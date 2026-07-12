@@ -78,6 +78,37 @@ const orderFactSchema = z.object({
   }),
 });
 
+const refundFactSchema = z.object({
+  type: z.literal('refund.completed'),
+  refund: z.object({
+    id: ulidSchema,
+    order_id: ulidSchema,
+    staff_id: ulidSchema,
+    approved_by: ulidSchema.nullish(),
+    currency: z.string().length(3),
+    total_amount: z.number().int(),
+    tax_amount: z.number().int().default(0),
+    tax_lines: z.array(taxLineSchema).default([]),
+    tender: z.enum(['cash', 'card_manual']),
+    card_ref: z.string().max(100).nullish(),
+    card_last4: z.string().max(4).nullish(),
+    lines: z
+      .array(
+        z.object({
+          id: ulidSchema,
+          order_line_id: ulidSchema,
+          variant_id: ulidSchema.nullish(),
+          qty: z.number().int().positive(),
+          amount: z.number().int(),
+          restock: z.boolean().default(false),
+        }),
+      )
+      .min(1),
+    client_created_at: z.string().datetime(),
+    local_seq: z.number().int().positive(),
+  }),
+});
+
 const movementFactSchema = z.object({
   type: z.literal('stock.movement'),
   movement: z.object({
@@ -98,9 +129,13 @@ export const syncBatchSchema = z.object({
     app_version: z.string().max(50).optional(),
     schema_rev: z.number().int().optional(),
   }),
-  facts: z.array(z.discriminatedUnion('type', [orderFactSchema, movementFactSchema])).min(1).max(500),
+  facts: z
+    .array(z.discriminatedUnion('type', [orderFactSchema, refundFactSchema, movementFactSchema]))
+    .min(1)
+    .max(500),
 });
 
 export type SyncBatchInput = z.infer<typeof syncBatchSchema>;
 export type OrderFact = z.infer<typeof orderFactSchema>;
+export type RefundFact = z.infer<typeof refundFactSchema>;
 export type MovementFact = z.infer<typeof movementFactSchema>;

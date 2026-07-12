@@ -12,6 +12,8 @@ import {
   orders,
   payments,
   products,
+  refundLines,
+  refunds,
   registers,
   roles,
   staff,
@@ -25,7 +27,7 @@ import {
   variants,
 } from '../../db/schema';
 import type { DeviceContext } from './devices.service';
-import type { MovementFact, OrderFact, SyncBatchInput } from './dto';
+import type { MovementFact, OrderFact, RefundFact, SyncBatchInput } from './dto';
 
 /**
  * Down-sync surface (offline-sync-strategy.md): bootstrap snapshot + delta
@@ -387,11 +389,13 @@ export class SyncService {
 
       const acks: FactAck[] = [];
       for (const fact of batch.facts) {
-        acks.push(
-          fact.type === 'order.completed'
-            ? await this.ingestOrder(tx, ctx, storeRow, ratesById, fact)
-            : await this.ingestMovement(tx, ctx, fact),
-        );
+        if (fact.type === 'order.completed') {
+          acks.push(await this.ingestOrder(tx, ctx, storeRow, ratesById, fact));
+        } else if (fact.type === 'refund.completed') {
+          acks.push(await this.ingestRefund(tx, ctx, fact));
+        } else {
+          acks.push(await this.ingestMovement(tx, ctx, fact));
+        }
       }
 
       await tx.insert(syncBatches).values({
@@ -529,6 +533,77 @@ export class SyncService {
       return { id: order.id, status: 'accepted_with_conflict', conflict: { type: conflict.type } };
     }
     return { id: order.id, status: 'accepted' };
+  }
+
+  private async ingestRefund(
+    tx: TenantTx,
+    ctx: DeviceContext,
+    fact: RefundFact,
+  ): Promise<FactAck> {
+    const refund = fact.refund;
+    const [duplicate] = await tx
+      .select({ id: refunds.id })
+      .from(refunds)
+      .where(eq(refunds.id, refund.id));
+    if (duplicate) return { id: refund.id, status: 'duplicate' };
+
+    // A refund always references a synced order: facts push in outbox order, so
+    // the sale is ingested before its refund (a batch applies facts in order,
+    // and refunds target prior orders). The refunds→orders FK enforces this —
+    // a missing order rolls the batch back for a clean retry, never silent loss.
+    await tx.insert(refunds).values({
+      id: refund.id,
+      storeId: ctx.storeId,
+      orderId: refund.order_id,
+      staffId: refund.staff_id,
+      approvedBy: refund.approved_by ?? null,
+      currency: refund.currency,
+      totalAmount: refund.total_amount,
+      taxAmount: refund.tax_amount,
+      taxLines: refund.tax_lines,
+      tenderType: refund.tender,
+      cardRef: refund.card_ref ?? null,
+      cardLast4: refund.card_last4 ?? null,
+      clientCreatedAt: new Date(refund.client_created_at),
+      localSeq: refund.local_seq,
+    });
+    await tx.insert(refundLines).values(
+      refund.lines.map((line) => ({
+        id: line.id,
+        storeId: ctx.storeId,
+        refundId: refund.id,
+        orderLineId: line.order_line_id,
+        variantId: line.variant_id ?? null,
+        qty: line.qty,
+        amount: line.amount,
+        restock: line.restock,
+      })),
+    );
+
+    // Derive order state from cumulative refunded qty vs. sold qty (invariant
+    // 4: server sets order state; the register never mutates a synced order).
+    const soldLines = await tx
+      .select({ id: orderLines.id, qty: orderLines.qty })
+      .from(orderLines)
+      .where(eq(orderLines.orderId, refund.order_id));
+    const refundedRows = await tx
+      .select({ orderLineId: refundLines.orderLineId, qty: refundLines.qty })
+      .from(refundLines)
+      .innerJoin(refunds, eq(refundLines.refundId, refunds.id))
+      .where(eq(refunds.orderId, refund.order_id));
+    const refundedByLine = new Map<string, number>();
+    for (const row of refundedRows) {
+      refundedByLine.set(row.orderLineId, (refundedByLine.get(row.orderLineId) ?? 0) + row.qty);
+    }
+    const fullyRefunded =
+      soldLines.length > 0 &&
+      soldLines.every((line) => (refundedByLine.get(line.id) ?? 0) >= line.qty);
+    await tx
+      .update(orders)
+      .set({ state: fullyRefunded ? 'refunded' : 'partially_refunded' })
+      .where(eq(orders.id, refund.order_id));
+
+    return { id: refund.id, status: 'accepted' };
   }
 
   private async ingestMovement(

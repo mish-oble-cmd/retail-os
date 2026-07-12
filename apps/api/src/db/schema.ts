@@ -544,6 +544,69 @@ export const payments = pgTable(
   ],
 );
 
+export const refunds = pgTable(
+  'refunds',
+  {
+    id: text('id').primaryKey(),
+    storeId: text('store_id')
+      .notNull()
+      .references(() => stores.id),
+    orderId: text('order_id').notNull(),
+    staffId: text('staff_id'),
+    approvedBy: text('approved_by'),
+    currency: text('currency').notNull(),
+    totalAmount: bigint('total_amount', { mode: 'number' }).notNull(),
+    taxAmount: bigint('tax_amount', { mode: 'number' }).notNull().default(0),
+    taxLines: jsonb('tax_lines').notNull().default([]),
+    tenderType: text('tender_type', { enum: ['cash', 'card_manual'] }).notNull(),
+    cardRef: text('card_ref'),
+    cardLast4: text('card_last4'),
+    clientCreatedAt: timestamp('client_created_at', { withTimezone: true }),
+    localSeq: bigint('local_seq', { mode: 'number' }),
+    receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique('refunds_store_id_unique').on(table.storeId, table.id),
+    index('refunds_store_order_idx').on(table.storeId, table.orderId),
+    foreignKey({
+      name: 'refunds_order_fk',
+      columns: [table.storeId, table.orderId],
+      foreignColumns: [orders.storeId, orders.id],
+    }),
+    foreignKey({
+      name: 'refunds_staff_fk',
+      columns: [table.storeId, table.staffId],
+      foreignColumns: [staff.storeId, staff.id],
+    }),
+  ],
+);
+
+export const refundLines = pgTable(
+  'refund_lines',
+  {
+    id: text('id').primaryKey(),
+    storeId: text('store_id')
+      .notNull()
+      .references(() => stores.id),
+    refundId: text('refund_id').notNull(),
+    orderLineId: text('order_line_id').notNull(),
+    variantId: text('variant_id'),
+    qty: bigint('qty', { mode: 'number' }).notNull(),
+    amount: bigint('amount', { mode: 'number' }).notNull(),
+    restock: boolean('restock').notNull().default(false),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('refund_lines_store_refund_idx').on(table.storeId, table.refundId),
+    foreignKey({
+      name: 'refund_lines_refund_fk',
+      columns: [table.storeId, table.refundId],
+      foreignColumns: [refunds.storeId, refunds.id],
+    }),
+  ],
+);
+
 /** Batch idempotency: PK (store_id, batch ULID); acks are replayed verbatim on duplicates. */
 export const syncBatches = pgTable(
   'sync_batches',

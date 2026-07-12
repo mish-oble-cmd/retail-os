@@ -15,6 +15,8 @@ import {
   orders,
   payments,
   products,
+  refundLines,
+  refunds,
   registers,
   roles,
   staff,
@@ -501,5 +503,120 @@ describe('SyncService.ingestBatch', () => {
       facts: [orderFact, makeMovementFact(orderFact.order.id)],
     });
     expect(retry.acks.map((a) => a.status)).toEqual(['accepted', 'accepted']);
+  });
+
+  // ---- refunds (1C) ---------------------------------------------------------
+
+  /** Refund `qty` units of an already-ingested order's single line. */
+  const makeRefundFact = (
+    orderFact: ReturnType<typeof makeOrderFact>,
+    qty: number,
+    restock = true,
+  ) => {
+    const line = orderFact.order.lines[0];
+    if (!line) throw new Error('order fact has no line');
+    const amount = Math.round((line.total_amount * qty) / line.qty);
+    const tax = Math.round(
+      (line.tax_lines.reduce((sum, t) => sum + t.amount, 0) * qty) / line.qty,
+    );
+    return {
+      type: 'refund.completed' as const,
+      refund: {
+        id: nextUlid('01REF'),
+        order_id: orderFact.order.id,
+        staff_id: A.staff,
+        approved_by: A.staff,
+        currency: 'SGD',
+        total_amount: amount,
+        tax_amount: tax,
+        tax_lines: line.tax_lines.map((t) => ({ rate_id: t.rate_id, amount: tax })),
+        tender: 'cash' as const,
+        lines: [
+          {
+            id: nextUlid('01RFL'),
+            order_line_id: line.id,
+            variant_id: A.variant,
+            qty,
+            amount,
+            restock,
+          },
+        ],
+        client_created_at: '2026-07-12T03:00:00.000Z',
+        local_seq: seq,
+      },
+    };
+  };
+
+  const ingestSale = async () => {
+    const orderFact = makeOrderFact();
+    await syncService.ingestBatch(ctx, makeBatch([orderFact, makeMovementFact(orderFact.order.id)]));
+    return orderFact;
+  };
+
+  const orderState = async (orderId: string) =>
+    db.tenants.forStore(A.store).tx(async (tx) =>
+      (await tx.select({ state: orders.state }).from(orders).where(eq(orders.id, orderId)))[0]?.state,
+    );
+
+  it('partial refund records refund rows, restocks, and sets partially_refunded', async () => {
+    const orderFact = await ingestSale();
+    const onHandBefore = await db.tenants.forStore(A.store).tx(async (tx) =>
+      (await tx.select().from(inventoryLevels).where(eq(inventoryLevels.variantId, A.variant)))[0]?.onHand,
+    );
+    const refundFact = makeRefundFact(orderFact, 1, true);
+    const restock = {
+      type: 'stock.movement' as const,
+      movement: {
+        id: nextUlid('01MOV'),
+        variant_id: A.variant,
+        location_id: A.location,
+        qty_delta: 1,
+        movement_type: 'refund_restock' as const,
+        ref_order_id: orderFact.order.id,
+      },
+    };
+
+    const result = await syncService.ingestBatch(ctx, makeBatch([refundFact, restock]));
+    expect(result.acks.map((a) => a.status)).toEqual(['accepted', 'accepted']);
+
+    const rows = await db.tenants.forStore(A.store).tx(async (tx) => ({
+      refund: (await tx.select().from(refunds).where(eq(refunds.id, refundFact.refund.id)))[0],
+      lines: await tx.select().from(refundLines).where(eq(refundLines.refundId, refundFact.refund.id)),
+      level: (await tx.select().from(inventoryLevels).where(eq(inventoryLevels.variantId, A.variant)))[0],
+    }));
+    expect(rows.refund).toMatchObject({ orderId: orderFact.order.id, tenderType: 'cash', approvedBy: A.staff });
+    expect(rows.lines).toHaveLength(1);
+    expect(rows.level?.onHand).toBe(Number(onHandBefore) + 1); // restocked
+    expect(await orderState(orderFact.order.id)).toBe('partially_refunded');
+  });
+
+  it('refunding every unit sets the order to refunded', async () => {
+    const orderFact = await ingestSale();
+    const refundFact = makeRefundFact(orderFact, 2, false);
+    await syncService.ingestBatch(ctx, makeBatch([refundFact]));
+    expect(await orderState(orderFact.order.id)).toBe('refunded');
+  });
+
+  it('replays a refund batch idempotently', async () => {
+    const orderFact = await ingestSale();
+    const refundFact = makeRefundFact(orderFact, 1, false);
+    const batch = makeBatch([refundFact]);
+    const first = await syncService.ingestBatch(ctx, batch);
+    const replay = await syncService.ingestBatch(ctx, batch);
+    expect(first.acks).toEqual(replay.acks);
+    const count = await db.tenants.forStore(A.store).tx(async (tx) =>
+      (await tx.select().from(refunds).where(eq(refunds.orderId, orderFact.order.id))).length,
+    );
+    expect(count).toBe(1); // not double-applied
+  });
+
+  it('rolls back a refund against an order the server has not seen (FK)', async () => {
+    const ghost = makeOrderFact(); // built but never ingested
+    const refundFact = makeRefundFact(ghost, 1, false);
+    await expect(syncService.ingestBatch(ctx, makeBatch([refundFact]))).rejects.toThrow();
+    const stored = await db.tenants.forStore(A.store).tx(async (tx) =>
+      (await tx.select().from(refunds).where(eq(refunds.id, refundFact.refund.id)))[0],
+    );
+    expect(stored).toBeUndefined(); // batch rolled back atomically
   });
 });

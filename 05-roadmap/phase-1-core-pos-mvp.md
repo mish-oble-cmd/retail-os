@@ -63,6 +63,15 @@ _Shipped on `phase-1/sync`: 0003_sync migration (devices, tombstones, order/paym
 
 Sell screen per approved mockup: grid, search, barcode wedge focus-trap; cart ops; discounts sheet (permission ceiling hardcoded to role later); custom sale; park/retrieve; payment screen: cash w/ change + quick amounts, manual card (ref + last4), split tender; receipt: ESC/POS print + email + QR; refunds against local/synced orders; register orders list.
 
+**1C kickoff decisions (2026-07-12, user-approved):** _(plan: `docs/superpowers/plans/2026-07-12-1c-sell-flow.md`)_
+
+1. **Browser store is real** — the Sell flow runs against the `@retailos/sync` `SqlDriver` port; `pos-web` gets a **wa-sqlite/OPFS** driver so a plain browser persists offline too (degrades to in-memory when OPFS is unavailable). Electron keeps `better-sqlite3`; the shared UI never knows which driver backs it.
+2. **Full receipt loop in 1C** — POS-05 email (Mailpit dev adapter) + QR to the admin public route **`/r/<order-ulid>`** are built end-to-end, not stubbed. ESC/POS thermal printing stays the Electron-only path (browser offers the native print dialog), verified interactively during 1C.
+3. **Refund facts land now** — a `refund.completed` outbox fact + server ingest + inventory restock projection (1B deferred refund facts to 1C/1D). **Exchange is Phase 2** (screen inventory POS-08 "exchange 2").
+4. **Owner PIN escalation** gates the Phase-1 fixed-role ceilings at the register (discount >10% line/cart, refunds, voids, tax-exempt, no-sale drawer) — reuses the 1F `PinPad` + `verifyPin` against an Owner. Full permission editor + queryable audit log UI arrive with FR-5.2/5.3 in Phase 2.
+5. **Parked carts are device-local** — a `parked_carts` SQLite table on the register, per FR-1.7 (named, per-register, survive restart); not part of the sync outbox.
+6. **Task order:** domain sell/refund primitives → device data-layer additions (`parked_carts`, refund fact, wa-sqlite driver) → POS-03 Sell → POS-14 discount + POS-13 custom sale → POS-04 Payment → POS-05 Receipt (+ `/r` page + email) → POS-06 park/retrieve → POS-07 orders → POS-08 refund (+ escalation) → E2E + close-out.
+
 ### 1D Shifts & cash
 
 Open/close with counts, paid in/out, over/short, Z-summary printable.

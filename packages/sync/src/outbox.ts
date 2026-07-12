@@ -55,6 +55,7 @@ export interface LocalSaleInput {
   id: string;
   number: string;
   staffId: string;
+  shiftId?: string | null;
   customerId?: string | null;
   note?: string | null;
   currency: string;
@@ -75,6 +76,7 @@ const orderFactPayload = (sale: LocalSaleInput) => ({
   id: sale.id,
   number: sale.number,
   staff_id: sale.staffId,
+  shift_id: sale.shiftId ?? null,
   customer_id: sale.customerId ?? null,
   note: sale.note ?? null,
   lines: sale.lines.map((line) => ({
@@ -117,13 +119,14 @@ export function recordSale(driver: SqlDriver, sale: LocalSaleInput): void {
   }
   driver.tx(() => {
     driver.run(
-      `INSERT INTO orders (id, number, staff_id, customer_id, state, currency, subtotal_amount,
+      `INSERT INTO orders (id, number, staff_id, shift_id, customer_id, state, currency, subtotal_amount,
          discount_amount, tax_amount, total_amount, tax_lines, note, client_created_at, local_seq)
-       VALUES (?, ?, ?, ?, 'completed', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, 'completed', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         sale.id,
         sale.number,
         sale.staffId,
+        sale.shiftId ?? null,
         sale.customerId ?? null,
         sale.currency,
         sale.totals.subtotal,
@@ -378,6 +381,12 @@ const toFact = (row: OutboxRow): SyncBatchBody['facts'][number] => {
       return { type: 'order.completed', order: payload };
     case 'refund.completed':
       return { type: 'refund.completed', refund: payload };
+    case 'shift.opened':
+      return { type: 'shift.opened', shift: payload };
+    case 'cash.movement':
+      return { type: 'cash.movement', movement: payload };
+    case 'shift.closed':
+      return { type: 'shift.closed', shift: payload };
     default:
       return { type: 'stock.movement', movement: payload };
   }

@@ -76,6 +76,19 @@ export {
   type TaxRateRow,
 } from './queries.js';
 export {
+  closeShift,
+  getActiveShift,
+  getShiftZSource,
+  openShift,
+  recordCashMovement,
+  type ActiveShift,
+  type CashMovementInput,
+  type CashMovementKind,
+  type CloseShiftInput,
+  type OpenShiftInput,
+  type ShiftZSource,
+} from './shifts.js';
+export {
   SqliteSecretStore,
   SyncClient,
   type SecretStore,

@@ -6,7 +6,7 @@ import type { SqlDriver } from './driver.js';
  * money as INTEGER minor units, JSON payloads as TEXT, booleans as 0/1.
  * POS-07/08 read local orders for 60 days (offline-sync-strategy.md).
  */
-export const DEVICE_SCHEMA_VERSION = 2;
+export const DEVICE_SCHEMA_VERSION = 3;
 
 const DDL = `
 CREATE TABLE IF NOT EXISTS sync_state (
@@ -128,6 +128,7 @@ CREATE TABLE IF NOT EXISTS orders (
   id TEXT PRIMARY KEY,
   number TEXT NOT NULL,
   staff_id TEXT,
+  shift_id TEXT,
   customer_id TEXT,
   state TEXT NOT NULL,
   currency TEXT NOT NULL,
@@ -218,6 +219,38 @@ CREATE TABLE IF NOT EXISTS stock_movements (
   ref_order_id TEXT,
   client_created_at TEXT NOT NULL
 );
+-- shifts (1D, FR-6.1) — cash-drawer lifecycle. One open shift per register
+-- enforced by the partial-unique index. Closed shifts carry the Z snapshot.
+CREATE TABLE IF NOT EXISTS shifts (
+  id TEXT PRIMARY KEY,
+  register_id TEXT NOT NULL,
+  location_id TEXT NOT NULL,
+  opened_by_staff_id TEXT NOT NULL,
+  opened_at TEXT NOT NULL,
+  opening_float INTEGER NOT NULL,
+  closed_by_staff_id TEXT,
+  closed_at TEXT,
+  closing_counted INTEGER,
+  closing_expected INTEGER,
+  over_short INTEGER,
+  z_snapshot TEXT,
+  state TEXT NOT NULL DEFAULT 'open',
+  local_seq INTEGER NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS shifts_one_open_per_register ON shifts (register_id) WHERE state = 'open';
+-- cash movements (1D, FR-6.1) — paid in/out and no-sale drawer opens. Each is
+-- its own auditable outbox fact with reason and staff attribution.
+CREATE TABLE IF NOT EXISTS cash_movements (
+  id TEXT PRIMARY KEY,
+  shift_id TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  amount INTEGER NOT NULL DEFAULT 0,
+  reason TEXT NOT NULL DEFAULT '',
+  staff_id TEXT NOT NULL,
+  approved_by_staff_id TEXT,
+  client_created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS cash_movements_shift_idx ON cash_movements (shift_id);
 
 -- outbox: appended in the SAME tx as the fact rows (atomicity — non-deferrable, phase doc §1B)
 CREATE TABLE IF NOT EXISTS outbox (
@@ -244,6 +277,12 @@ export function migrateDeviceDb(driver: SqlDriver): void {
         .split('\n')
         .some((line) => line.trim() && !line.trim().startsWith('--'));
       if (hasStatement) driver.run(statement);
+    }
+    // v3: orders gains shift_id. Fresh installs get it from the CREATE above;
+    // devices upgrading from v2 already have an orders table, so add it here.
+    const orderCols = driver.all<{ name: string }>(`PRAGMA table_info(orders)`);
+    if (!orderCols.some((col) => col.name === 'shift_id')) {
+      driver.run(`ALTER TABLE orders ADD COLUMN shift_id TEXT`);
     }
     driver.run(
       `INSERT OR IGNORE INTO sync_state (id, schema_version) VALUES (1, ?)`,

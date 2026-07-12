@@ -63,6 +63,9 @@ export interface SyncBatchBody {
     | { type: 'order.completed'; order: Row }
     | { type: 'refund.completed'; refund: Row }
     | { type: 'stock.movement'; movement: Row }
+    | { type: 'shift.opened'; shift: Row }
+    | { type: 'cash.movement'; movement: Row }
+    | { type: 'shift.closed'; shift: Row }
   )[];
 }
 

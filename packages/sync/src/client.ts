@@ -10,6 +10,18 @@ import {
   type LocalSaleInput,
 } from './outbox.js';
 import { migrateDeviceDb } from './schema.js';
+import {
+  closeShift,
+  getActiveShift,
+  getShiftZSource,
+  openShift,
+  recordCashMovement,
+  type ActiveShift,
+  type CashMovementInput,
+  type CloseShiftInput,
+  type OpenShiftInput,
+  type ShiftZSource,
+} from './shifts.js';
 
 /**
  * Facade tying the engine together for a register app:
@@ -101,6 +113,31 @@ export class SyncClient {
   /** Queue a refund locally (atomic outbox + order state); push happens on sync(). */
   recordRefund(refund: LocalRefundInput): void {
     recordRefund(this.driver, refund);
+  }
+
+  /** Open a shift with a counted float (atomic outbox); one open per register. */
+  openShift(input: OpenShiftInput): void {
+    openShift(this.driver, input);
+  }
+
+  /** Record a paid-in / paid-out / no-sale cash movement (atomic outbox). */
+  recordCashMovement(input: CashMovementInput): void {
+    recordCashMovement(this.driver, input);
+  }
+
+  /** Close a shift with a blind count + Z snapshot (atomic outbox). */
+  closeShift(input: CloseShiftInput): void {
+    closeShift(this.driver, input);
+  }
+
+  /** The single open shift for this device's register, or null. */
+  getActiveShift(registerId: string): ActiveShift | null {
+    return getActiveShift(this.driver, registerId);
+  }
+
+  /** Everything buildZReport needs for a shift (orders, refunds, movements, float). */
+  getShiftZSource(shiftId: string): ShiftZSource {
+    return getShiftZSource(this.driver, shiftId);
   }
 
   /** Push pending facts (with retry), then pull deltas. */

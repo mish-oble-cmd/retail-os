@@ -23,6 +23,8 @@ const EXPECTED_TABLES = [
   'refund_lines',
   'parked_carts',
   'stock_movements',
+  'shifts',
+  'cash_movements',
   'outbox',
 ];
 

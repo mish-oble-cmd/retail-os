@@ -82,6 +82,20 @@ describe('recordSale', () => {
     expect(pendingCount(driver)).toBe(2); // order.completed + stock.movement
   });
 
+  it('stamps shift_id on the order row and the order.completed fact (1D)', () => {
+    const sale = makeSale({ shiftId: 'SHIFT1' });
+    recordSale(driver, sale);
+    const row = driver.get<{ shift_id: string | null }>(`SELECT shift_id FROM orders WHERE id = ?`, [
+      sale.id,
+    ]);
+    expect(row?.shift_id).toBe('SHIFT1');
+    const fact = driver.get<{ payload: string }>(
+      `SELECT payload FROM outbox WHERE fact_type = 'order.completed' AND entity_id = ?`,
+      [sale.id],
+    );
+    expect(JSON.parse(fact!.payload).shift_id).toBe('SHIFT1');
+  });
+
   it('rolls back everything when any row fails — no half-recorded sale', () => {
     const sale = makeSale();
     const movement = sale.movements[0];

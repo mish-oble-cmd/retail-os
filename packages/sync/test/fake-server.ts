@@ -53,6 +53,8 @@ export class FakeSyncServer {
   readonly orders = new Map<string, Row>();
   readonly refunds = new Map<string, Row>();
   readonly movements = new Map<string, Row>();
+  readonly shifts = new Map<string, Row>();
+  readonly cashMovements = new Map<string, Row>();
   activationCodes = new Map<string, { registerId: string; used: boolean }>();
   deviceToken: string | null = null;
 
@@ -131,6 +133,19 @@ export class FakeSyncServer {
         } else {
           this.refunds.set(refund.id, refund);
           acks.push({ id: refund.id, status: 'accepted' });
+        }
+      } else if (fact.type === 'shift.opened' || fact.type === 'shift.closed') {
+        const shift = fact.shift as Row & { id: string };
+        const dup = this.shifts.has(shift.id) && fact.type === 'shift.opened';
+        this.shifts.set(shift.id, shift);
+        acks.push({ id: shift.id, status: dup ? 'duplicate' : 'accepted' });
+      } else if (fact.type === 'cash.movement') {
+        const movement = fact.movement as Row & { id: string };
+        if (this.cashMovements.has(movement.id)) {
+          acks.push({ id: movement.id, status: 'duplicate' });
+        } else {
+          this.cashMovements.set(movement.id, movement);
+          acks.push({ id: movement.id, status: 'accepted' });
         }
       } else {
         const movement = fact.movement as Row & { id: string };

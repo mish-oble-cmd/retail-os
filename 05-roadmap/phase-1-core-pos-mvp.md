@@ -59,9 +59,11 @@ _Shipped on `phase-1/sync`: 0003_sync migration (devices, tombstones, order/paym
 7. Known delta-feed race (uncommitted-rev skip under concurrent writers) accepted at Phase 1 volume; Phase 3 hardening revisits
 8. Customers excluded from bootstrap/changes until Phase 2 (no customers table yet)
 
-### 1C Sell flow (pos-web + Electron)
+### 1C Sell flow (pos-web + Electron) — ✅ complete 2026-07-12
 
 Sell screen per approved mockup: grid, search, barcode wedge focus-trap; cart ops; discounts sheet (permission ceiling hardcoded to role later); custom sale; park/retrieve; payment screen: cash w/ change + quick amounts, manual card (ref + last4), split tender; receipt: ESC/POS print + email + QR; refunds against local/synced orders; register orders list.
+
+_Shipped on `phase-1/sell-flow` (full report: `.superpowers/sdd/1c-report.md`): the cashier's core loop on `pos-web` over the offline-first device store. **Domain** — `calculateRefund` (proportional, integer-safe, restock deltas) + `formatSaleNumber`. **`@retailos/sync`** — device `parked_carts` + park/retrieve/discard (local-only), `recordRefund` outbox fact (`refund.completed`, derived order state, restock via the existing `stock.movement` path), `queries.ts` reads (grid, barcode, search, orders history, order detail w/ per-line `refundedQty`), and a **sql.js + best-effort OPFS snapshot** browser driver (`openBrowserDriver`, degrades to in-memory). **API** — migration `0005_refunds` (RLS/tenant FKs/append-only grants), `refund.completed` ingest (order-state derivation + restock projection), and a public receipt surface `GET/POST /public/receipts/:id[/email]` (cross-tenant resolve → RLS read; Mailpit mailer). **admin** — public `/r/[orderId]` receipt page. **pos-web** — POS-03 Sell, POS-14 discount + POS-13 custom sale (Owner-PIN escalation over the Cashier 10% ceiling, dual attribution), POS-04 Payment (cash/card/split → `recordSale`), POS-05 Receipt (QR + print + email + auto-return), POS-06 park/retrieve (collision re-park), POS-07 orders + POS-08 refund (line-level, "N of M", per-line restock, Owner-PIN gate). Full-repo gate green (`typecheck lint test`, 33/33 tasks; domain 77, sync 40, api 124, pos-web 3). Every screen browser-verified against the real sql.js/OPFS store (incl. a sale surviving an OPFS reload). **E2E: PASS — 21/21** against real Postgres + Mailpit (`.superpowers/sdd/1c-e2e.mjs`): device activate → push sale facts (order completed, inventory 40→38) → push refund facts (order → `partially_refunded`, refund rows confirm the `0005` RLS grants on real PG, inventory 38→39) → idempotent replay → `/public/receipts/:id` → email delivered to Mailpit. Exchange, integrated card terminals, and certified browser offline (wa-sqlite worker) remain later-phase._
 
 **1C kickoff decisions (2026-07-12, user-approved):** _(plan: `docs/superpowers/plans/2026-07-12-1c-sell-flow.md`)_
 
@@ -90,9 +92,9 @@ _Shipped on `phase-1/staff-pin`: fixed Cashier role (signup seed + `0004` migrat
 
 - [ ] Create store, add 20 products via UI + 200 via CSV template (basic import)
 - [ ] Activate desktop register with code; cashier PIN login
-- [ ] Sell: scan 3 items, apply 10% line discount, park, retrieve, cash payment, correct change, printed + email receipt with tax breakdown
-- [ ] Split tender sale (cash + manual card)
-- [ ] Refund one line of yesterday's order to cash, restock toggled
+- [x] Sell: scan 3 items, apply 10% line discount, park, retrieve, cash payment, correct change, printed + email receipt with tax breakdown _(1C)_
+- [x] Split tender sale (cash + manual card) _(1C)_
+- [x] Refund one line of yesterday's order to cash, restock toggled _(1C)_
 - [ ] Kill the network mid-shift → 10 sales complete offline → reconnect → all appear in admin exactly once (pull the plug demo!)
 - [ ] Close shift: blind count, over/short shown, Z-report prints
 - [ ] Admin: orders list shows the day; order detail timeline correct

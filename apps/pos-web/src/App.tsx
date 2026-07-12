@@ -5,8 +5,10 @@ import { useCart } from './lib/cart';
 import { listTaxCategories, openDevice, type TaxCategoryOption } from './lib/device';
 import { deviceStaffDirectory, type StaffDirectory } from './lib/staff-directory';
 import { useIdleLock } from './lib/use-idle-lock';
+import type { LocalSaleInput } from '@retailos/sync';
 import { CustomSaleSheet } from './screens/CustomSaleSheet';
 import { DiscountSheet } from './screens/DiscountSheet';
+import { PaymentScreen } from './screens/PaymentScreen';
 import { PinLockScreen } from './screens/PinLockScreen';
 import { SellScreen } from './screens/SellScreen';
 
@@ -48,7 +50,7 @@ function BootScreen() {
   );
 }
 
-type Screen = 'sell' | 'payment';
+type Screen = 'sell' | 'payment' | 'receipt';
 
 type DiscountTarget = { kind: 'cart' } | { kind: 'line'; key: string };
 
@@ -60,6 +62,7 @@ function Register({ device }: { device: Device }) {
   const [queuedFacts, setQueuedFacts] = useState(0);
   const [discountTarget, setDiscountTarget] = useState<DiscountTarget | null>(null);
   const [customSaleOpen, setCustomSaleOpen] = useState(false);
+  const [completed, setCompleted] = useState<{ sale: LocalSaleInput; change: number } | null>(null);
   const [taxCategories] = useState<TaxCategoryOption[]>(() => listTaxCategories(driver));
   const cart = useCart(store.currency, store.priceMode);
 
@@ -138,7 +141,31 @@ function Register({ device }: { device: Device }) {
       )}
 
       {staff && screen === 'payment' && (
-        <PaymentPlaceholder total={cart.totals.totalAmount} currency={store.currency} onBack={() => setScreen('sell')} />
+        <PaymentScreen
+          driver={driver}
+          store={store}
+          staff={staff}
+          cart={cart}
+          onBack={() => setScreen('sell')}
+          onComplete={(result) => {
+            setCompleted(result);
+            cart.clear();
+            refreshCounters();
+            setScreen('receipt');
+          }}
+        />
+      )}
+
+      {staff && screen === 'receipt' && completed && (
+        <ReceiptPlaceholder
+          change={completed.change}
+          total={completed.sale.totals.total}
+          currency={store.currency}
+          onNewSale={() => {
+            setCompleted(null);
+            setScreen('sell');
+          }}
+        />
       )}
 
       {session === null && (
@@ -175,16 +202,17 @@ function existingDiscount(target: DiscountTarget, cart: ReturnType<typeof useCar
   return cart.lines.find((l) => l.key === target.key)?.discounts[0] ?? null;
 }
 
-// Placeholder until T7 builds POS-04 Payment.
-function PaymentPlaceholder({ total, currency, onBack }: { total: number; currency: string; onBack: () => void }) {
+// Placeholder until T8 builds POS-05 Receipt.
+function ReceiptPlaceholder({ change, total, currency, onNewSale }: { change: number; total: number; currency: string; onNewSale: () => void }) {
+  const fmt = (n: number) => (n / 100).toLocaleString('en-PH', { style: 'currency', currency });
   return (
     <div className="flex h-screen flex-col items-center justify-center gap-4 bg-bg">
-      <p className="text-pos-total font-semibold text-ink font-money tabular-nums">
-        {(total / 100).toLocaleString('en-PH', { style: 'currency', currency })}
-      </p>
-      <p className="text-pos-body text-ink-muted">Payment screen arrives in T7.</p>
-      <button onClick={onBack} className="min-h-touch-pos rounded border border-border bg-surface px-6 text-body text-ink">
-        Back to sell
+      <p className="text-h2 font-semibold text-success">Sale complete</p>
+      <p className="text-pos-body text-ink-muted">Total {fmt(total)}</p>
+      {change > 0 && <p className="text-pos-total font-semibold text-ink font-money tabular-nums">Change {fmt(change)}</p>}
+      <p className="text-body-sm text-ink-muted">Receipt (print / email / QR) arrives in T8.</p>
+      <button onClick={onNewSale} className="min-h-touch-pos rounded-card bg-primary px-8 py-3 text-pos-body font-semibold text-white">
+        New sale
       </button>
     </div>
   );

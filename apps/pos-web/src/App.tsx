@@ -1,10 +1,12 @@
 import {
   discardParkedCart,
+  getActiveShift,
   getStoreMeta,
   listParkedCarts,
   parkCart,
   pendingCount,
   retrieveParkedCart,
+  type ActiveShift,
   type BrowserDriverHandle,
   type LocalSaleInput,
   type ParkedCartSummary,
@@ -14,9 +16,15 @@ import {
 import type { Discount } from '@retailos/domain';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useCart, type Cart } from './lib/cart';
-import { listTaxCategories, openDevice, type TaxCategoryOption } from './lib/device';
+import {
+  DEMO_REGISTER_ID,
+  listTaxCategories,
+  openDevice,
+  type TaxCategoryOption,
+} from './lib/device';
 import { deviceStaffDirectory, type StaffDirectory } from './lib/staff-directory';
 import { useIdleLock } from './lib/use-idle-lock';
+import { CashMovementSheet } from './screens/CashMovementSheet';
 import { CustomSaleSheet } from './screens/CustomSaleSheet';
 import { DiscountSheet } from './screens/DiscountSheet';
 import { OrdersScreen } from './screens/OrdersScreen';
@@ -27,6 +35,8 @@ import { PaymentScreen } from './screens/PaymentScreen';
 import { PinLockScreen } from './screens/PinLockScreen';
 import { ReceiptScreen } from './screens/ReceiptScreen';
 import { SellScreen } from './screens/SellScreen';
+import { ShiftCloseScreen } from './screens/ShiftCloseScreen';
+import { ShiftOpenScreen } from './screens/ShiftOpenScreen';
 
 interface Device {
   handle: BrowserDriverHandle;
@@ -66,7 +76,9 @@ function BootScreen() {
   );
 }
 
-type Screen = 'sell' | 'payment' | 'receipt' | 'orders' | 'refund';
+type Screen = 'sell' | 'payment' | 'receipt' | 'orders' | 'refund' | 'shift-close';
+
+const REGISTER_NAME = 'Register 2';
 
 type DiscountTarget = { kind: 'cart' } | { kind: 'line'; key: string };
 
@@ -74,6 +86,10 @@ function Register({ device }: { device: Device }) {
   const { driver, store, directory } = device;
   const [session, setSession] = useState<{ staffId: string; name: string; roleId: string } | null>(null);
   const [screen, setScreen] = useState<Screen>('sell');
+  const [activeShift, setActiveShift] = useState<ActiveShift | null>(() =>
+    getActiveShift(driver, DEMO_REGISTER_ID),
+  );
+  const [cashOpen, setCashOpen] = useState(false);
   const [parkedCount, setParkedCount] = useState(0);
   const [queuedFacts, setQueuedFacts] = useState(0);
   const [discountTarget, setDiscountTarget] = useState<DiscountTarget | null>(null);
@@ -154,7 +170,22 @@ function Register({ device }: { device: Device }) {
 
   return (
     <div className="relative min-h-screen">
-      {staff && screen === 'sell' && (
+      {/* Shift gate (FR-6.1): no register work until the drawer float is counted. */}
+      {staff && !activeShift && screen !== 'shift-close' && (
+        <ShiftOpenScreen
+          driver={driver}
+          store={store}
+          staff={staff}
+          registerName={REGISTER_NAME}
+          onOpened={() => {
+            setActiveShift(getActiveShift(driver, DEMO_REGISTER_ID));
+            setScreen('sell');
+            refreshCounters();
+          }}
+        />
+      )}
+
+      {staff && activeShift && screen === 'sell' && (
         <SellScreen
           driver={driver}
           store={store}
@@ -164,12 +195,44 @@ function Register({ device }: { device: Device }) {
           queuedFacts={queuedFacts}
           onLock={lock}
           onOpenOrders={() => setScreen('orders')}
+          onOpenCash={() => setCashOpen(true)}
+          onCloseShift={() => setScreen('shift-close')}
           onCharge={() => setScreen('payment')}
           onPark={() => setParkOpen(true)}
           onOpenParked={() => setParkedOpen(true)}
           onOpenDiscount={() => setDiscountTarget({ kind: 'cart' })}
           onOpenLineDiscount={(key) => setDiscountTarget({ kind: 'line', key })}
           onOpenCustomSale={() => setCustomSaleOpen(true)}
+        />
+      )}
+
+      {staff && activeShift && cashOpen && (
+        <CashMovementSheet
+          driver={driver}
+          currency={store.currency}
+          shiftId={activeShift.id}
+          staff={{ id: session!.staffId, roleId: session!.roleId }}
+          onDone={() => {
+            setCashOpen(false);
+            refreshCounters();
+          }}
+          onClose={() => setCashOpen(false)}
+        />
+      )}
+
+      {staff && activeShift && screen === 'shift-close' && session && (
+        <ShiftCloseScreen
+          driver={driver}
+          store={store}
+          staff={{ id: session.staffId, name: session.name, roleId: session.roleId }}
+          shift={{ id: activeShift.id, openingFloat: activeShift.openingFloat }}
+          registerName={REGISTER_NAME}
+          onBack={() => setScreen('sell')}
+          onClosed={() => {
+            setActiveShift(null);
+            setScreen('sell');
+            refreshCounters();
+          }}
         />
       )}
 
@@ -231,11 +294,12 @@ function Register({ device }: { device: Device }) {
         />
       )}
 
-      {staff && screen === 'payment' && (
+      {staff && activeShift && screen === 'payment' && (
         <PaymentScreen
           driver={driver}
           store={store}
           staff={staff}
+          shiftId={activeShift.id}
           cart={cart}
           onBack={() => setScreen('sell')}
           onComplete={(result) => {

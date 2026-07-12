@@ -153,6 +153,7 @@ async function seedDemoIfEmpty(driver: SqlDriver): Promise<void> {
 }
 
 export const DEMO_LOCATION_ID = LOCATION_ID;
+export const DEMO_REGISTER_ID = 'DEMOREG1';
 
 export interface TaxCategoryOption {
   id: string;

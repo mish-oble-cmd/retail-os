@@ -17,12 +17,13 @@ export function buildSaleInput(params: {
   totals: CartTotals;
   currency: string;
   staffId: string;
+  shiftId: string;
   locationId: string;
   seq: number;
   number: string;
   payments: LocalSalePayment[];
 }): LocalSaleInput {
-  const { lines, totals, currency, staffId, locationId, seq, number, payments } = params;
+  const { lines, totals, currency, staffId, shiftId, locationId, seq, number, payments } = params;
   const orderId = ulid();
 
   const saleLines = lines.map((line, i) => {
@@ -62,6 +63,7 @@ export function buildSaleInput(params: {
     id: orderId,
     number,
     staffId,
+    shiftId,
     currency,
     totals: {
       subtotal: totals.subtotalAmount,

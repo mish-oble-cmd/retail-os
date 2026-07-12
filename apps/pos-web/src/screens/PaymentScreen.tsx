@@ -17,6 +17,7 @@ interface PaymentScreenProps {
   driver: SqlDriver;
   store: StoreMeta;
   staff: { id: string; name: string };
+  shiftId: string;
   cart: UseCart;
   onBack: () => void;
   onComplete: (result: { sale: LocalSaleInput; change: number }) => void;
@@ -32,7 +33,7 @@ function cashChips(remaining: number): number[] {
   return [...chips].filter((c) => c >= remaining && c > 0).sort((a, b) => a - b).slice(0, 4);
 }
 
-export function PaymentScreen({ driver, store, staff, cart, onBack, onComplete }: PaymentScreenProps) {
+export function PaymentScreen({ driver, store, staff, shiftId, cart, onBack, onComplete }: PaymentScreenProps) {
   const total = cart.totals.totalAmount;
   const [payments, setPayments] = useState<LocalSalePayment[]>([]);
   const [tender, setTender] = useState<Tender>('cash');
@@ -105,6 +106,7 @@ export function PaymentScreen({ driver, store, staff, cart, onBack, onComplete }
       totals: cart.totals,
       currency: store.currency,
       staffId: staff.id,
+      shiftId,
       locationId: DEMO_LOCATION_ID,
       seq,
       number: formatSaleNumber(seq, { prefix: 'R2' }),

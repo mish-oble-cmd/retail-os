@@ -30,6 +30,8 @@ interface SellScreenProps {
   queuedFacts: number;
   onLock: () => void;
   onOpenOrders: () => void;
+  onOpenCash: () => void;
+  onCloseShift: () => void;
   onCharge: () => void;
   onPark: () => void;
   onOpenParked: () => void;
@@ -55,6 +57,8 @@ export function SellScreen({
   queuedFacts,
   onLock,
   onOpenOrders,
+  onOpenCash,
+  onCloseShift,
   onCharge,
   onPark,
   onOpenParked,
@@ -135,8 +139,14 @@ export function SellScreen({
             </span>
             {staff.name}
           </span>
+          <Button variant="secondary" size="pos" onClick={onOpenCash}>
+            Cash
+          </Button>
           <Button variant="secondary" size="pos" onClick={onOpenOrders}>
             Orders
+          </Button>
+          <Button variant="secondary" size="pos" onClick={onCloseShift}>
+            Close shift
           </Button>
           <Button variant="secondary" size="pos" onClick={onLock}>
             Lock

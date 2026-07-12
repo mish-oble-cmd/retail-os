@@ -28,7 +28,8 @@ REST, OpenAPI-first (spec is written before handlers; `@retailos/api-client` is 
 /stores/current                          GET, PATCH
 /locations, /locations/{id}              CRUD
 /registers, /registers/{id}              CRUD  (+ POST /registers/{id}/activation-codes)
-/staff, /roles                           CRUD
+/staff, /staff/{id}                      GET list, POST, PATCH  (+ POST /staff/{id}/pin — set/reset PIN)
+/roles                                   GET list  (Phase 1 fixed: Owner, Cashier)
 /products, /products/{id}                CRUD  (+ /products/import CSV, /products/export)
 /variants/{id}                           GET, PATCH
 /categories                              CRUD

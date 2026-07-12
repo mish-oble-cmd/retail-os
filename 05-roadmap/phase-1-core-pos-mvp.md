@@ -71,9 +71,11 @@ Open/close with counts, paid in/out, over/short, Z-summary printable.
 
 Signup wizard (store, currency, tax rate, location+register auto-created), sample catalog import offer, activation-code flow for the register, "first sale" checklist on empty dashboard. **Measure: fresh signup → first sale < 15 min.**
 
-### 1F Staff PIN
+### 1F Staff PIN — ✅ complete 2026-07-12
 
 Staff CRUD (admin), PIN hash sync, PIN lock + attribution on every order (roles/permissions deepen in Phase 2 — Phase 1 roles: Owner/Cashier fixed).
+
+_Shipped on `phase-1/staff-pin`: fixed Cashier role (signup seed + `0004` migration backfill for pre-existing stores), `verifyPin` offline argon2id check in `@retailos/domain` (hash-wasm, device-verifiable against the server-issued argon2 hash), `StaffService` CRUD with guards (Owner-only `staff_edit` gate, self-demote guard, last-owner guard) + `setPin`, `/staff` (`GET` list, `POST`, `PATCH`) + `POST /staff/{id}/pin` + `GET /roles` API with OpenAPI, admin Settings → Staff page (list/create/edit/deactivate + PIN set/reset), `staffId` now required on `recordSale` (attribution on every order, `@retailos/sync`), and a real POS-02 PIN lock screen (`MAX_ATTEMPTS=5` / `COOLDOWN_MS=30_000` throttle, 90 s idle auto-lock). Tests substantiated by the full-repo gate run: `identity.service.test.ts` (5), `staff.service.test.ts` (11, incl. setPin invariants — device-verifiable hash, `sync_rev` bump), `pin.test.ts` (3, `verifyPin` golden path), `pin-lock.test.ts` (3, throttle state machine), `outbox.test.ts` (9, incl. staffId-required on `recordSale`) — 210 tests passing repo-wide, full gate (`typecheck lint test`, 32/32 tasks) green. E2E deferred — see report (`.superpowers/sdd/task-10-report.md`); Postgres/colima were not reachable at verification time, so the real-Postgres golden-path script (signup → Cashier → PIN set → device SQLite `verifyPin` → attributed sale → deactivation sync) was written but not executed against a live stack._
 
 ## Acceptance criteria (demo script)
 

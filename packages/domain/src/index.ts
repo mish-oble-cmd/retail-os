@@ -27,3 +27,14 @@ export {
   type Discount,
 } from './cart/cart.js';
 export { verifyPin } from './auth/pin.js';
+export {
+  calculateRefund,
+  type RefundInput,
+  type RefundableLine,
+  type RefundTaxLine,
+  type RefundSelection,
+  type RefundResult,
+  type RefundLineResult,
+  type RefundRestock,
+} from './sale/refund.js';
+export { formatSaleNumber } from './sale/number.js';

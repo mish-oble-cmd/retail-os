@@ -7,6 +7,12 @@ export const PACKAGE_NAME = '@retailos/sync';
 
 export type { SqlDriver } from './driver.js';
 export { openBetterSqliteDriver } from './better-sqlite3-driver.js';
+export { openSqlJsDriver, type SqlJsDriver, type SqlJsDriverOptions } from './sqljs-driver.js';
+export {
+  openBrowserDriver,
+  type BrowserDriverHandle,
+  type BrowserDriverOptions,
+} from './browser-driver.js';
 export { DEVICE_SCHEMA_VERSION, migrateDeviceDb } from './schema.js';
 export {
   SyncHttp,

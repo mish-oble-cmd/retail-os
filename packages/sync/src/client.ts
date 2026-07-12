@@ -1,7 +1,14 @@
 import { applyBootstrap, lastAckRev, pullOnce } from './apply.js';
 import type { SqlDriver } from './driver.js';
 import { SyncHttp } from './http.js';
-import { pendingCount, pushWithRetry, recordSale, type LocalSaleInput } from './outbox.js';
+import {
+  pendingCount,
+  pushWithRetry,
+  recordRefund,
+  recordSale,
+  type LocalRefundInput,
+  type LocalSaleInput,
+} from './outbox.js';
 import { migrateDeviceDb } from './schema.js';
 
 /**
@@ -89,6 +96,11 @@ export class SyncClient {
   /** Queue a completed sale locally (atomic outbox); push happens on sync(). */
   recordSale(sale: LocalSaleInput): void {
     recordSale(this.driver, sale);
+  }
+
+  /** Queue a refund locally (atomic outbox + order state); push happens on sync(). */
+  recordRefund(refund: LocalRefundInput): void {
+    recordRefund(this.driver, refund);
   }
 
   /** Push pending facts (with retry), then pull deltas. */

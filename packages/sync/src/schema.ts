@@ -6,7 +6,7 @@ import type { SqlDriver } from './driver.js';
  * money as INTEGER minor units, JSON payloads as TEXT, booleans as 0/1.
  * POS-07/08 read local orders for 60 days (offline-sync-strategy.md).
  */
-export const DEVICE_SCHEMA_VERSION = 1;
+export const DEVICE_SCHEMA_VERSION = 2;
 
 const DDL = `
 CREATE TABLE IF NOT EXISTS sync_state (
@@ -164,6 +164,51 @@ CREATE TABLE IF NOT EXISTS payments (
   captured_at TEXT
 );
 CREATE INDEX IF NOT EXISTS payments_order_idx ON payments (order_id);
+-- refunds (1C) — refund.completed facts. Restock lands in stock_movements as
+-- movement_type refund_restock. refunded_qty per line is DERIVED from
+-- refund_lines (single source of truth), so no ALTER of order_lines is needed.
+CREATE TABLE IF NOT EXISTS refunds (
+  id TEXT PRIMARY KEY,
+  order_id TEXT NOT NULL,
+  staff_id TEXT NOT NULL,
+  approved_by TEXT,
+  currency TEXT NOT NULL,
+  total_amount INTEGER NOT NULL,
+  tax_amount INTEGER NOT NULL DEFAULT 0,
+  tax_lines TEXT NOT NULL DEFAULT '[]',
+  tender_type TEXT NOT NULL,
+  card_ref TEXT,
+  card_last4 TEXT,
+  client_created_at TEXT NOT NULL,
+  local_seq INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS refunds_order_idx ON refunds (order_id);
+CREATE UNIQUE INDEX IF NOT EXISTS refunds_local_seq_unique ON refunds (local_seq);
+CREATE TABLE IF NOT EXISTS refund_lines (
+  id TEXT PRIMARY KEY,
+  refund_id TEXT NOT NULL,
+  order_line_id TEXT NOT NULL,
+  variant_id TEXT,
+  qty INTEGER NOT NULL,
+  amount INTEGER NOT NULL,
+  restock INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS refund_lines_refund_idx ON refund_lines (refund_id);
+CREATE INDEX IF NOT EXISTS refund_lines_order_line_idx ON refund_lines (order_line_id);
+-- parked carts (1C, FR-1.7) — device-local only, named, per register, survive
+-- restart. Never enter the sync outbox.
+CREATE TABLE IF NOT EXISTS parked_carts (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  staff_id TEXT,
+  cart TEXT NOT NULL,
+  item_count INTEGER NOT NULL DEFAULT 0,
+  total_amount INTEGER NOT NULL DEFAULT 0,
+  currency TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS parked_carts_updated_idx ON parked_carts (updated_at);
 CREATE TABLE IF NOT EXISTS stock_movements (
   id TEXT PRIMARY KEY,
   variant_id TEXT NOT NULL,

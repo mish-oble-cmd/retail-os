@@ -51,6 +51,7 @@ export class FakeSyncServer {
   private readonly tombstones: Change[] = [];
   private readonly batches = new Map<string, FactAck[]>();
   readonly orders = new Map<string, Row>();
+  readonly refunds = new Map<string, Row>();
   readonly movements = new Map<string, Row>();
   activationCodes = new Map<string, { registerId: string; used: boolean }>();
   deviceToken: string | null = null;
@@ -122,6 +123,14 @@ export class FakeSyncServer {
         } else {
           this.orders.set(order.id, order);
           acks.push({ id: order.id, status: 'accepted' });
+        }
+      } else if (fact.type === 'refund.completed') {
+        const refund = fact.refund as Row & { id: string };
+        if (this.refunds.has(refund.id)) {
+          acks.push({ id: refund.id, status: 'duplicate' });
+        } else {
+          this.refunds.set(refund.id, refund);
+          acks.push({ id: refund.id, status: 'accepted' });
         }
       } else {
         const movement = fact.movement as Row & { id: string };

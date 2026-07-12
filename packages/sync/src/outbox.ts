@@ -200,6 +200,158 @@ export function recordSale(driver: SqlDriver, sale: LocalSaleInput): void {
   });
 }
 
+export interface LocalRefundLine {
+  id: string;
+  orderLineId: string;
+  variantId?: string | null;
+  qty: number;
+  amount: number;
+  restock: boolean;
+}
+
+export interface LocalRefundInput {
+  id: string;
+  orderId: string;
+  staffId: string;
+  /** Owner staff id that escalated the refund (FR-5.2 register escalation) */
+  approvedBy?: string | null;
+  currency: string;
+  totalAmount: number;
+  taxAmount: number;
+  taxLines: LocalTaxLine[];
+  tender: 'cash' | 'card_manual';
+  cardRef?: string | null;
+  cardLast4?: string | null;
+  lines: LocalRefundLine[];
+  /** restock movements — movementType 'refund_restock', positive qtyDelta */
+  movements: LocalStockMovement[];
+  clientCreatedAt: string;
+  localSeq: number;
+}
+
+const refundFactPayload = (refund: LocalRefundInput) => ({
+  id: refund.id,
+  order_id: refund.orderId,
+  staff_id: refund.staffId,
+  approved_by: refund.approvedBy ?? null,
+  currency: refund.currency,
+  total_amount: refund.totalAmount,
+  tax_amount: refund.taxAmount,
+  tax_lines: wireTaxLines(refund.taxLines),
+  tender: refund.tender,
+  card_ref: refund.cardRef ?? null,
+  card_last4: refund.cardLast4 ?? null,
+  lines: refund.lines.map((line) => ({
+    id: line.id,
+    order_line_id: line.orderLineId,
+    variant_id: line.variantId ?? null,
+    qty: line.qty,
+    amount: line.amount,
+    restock: line.restock,
+  })),
+  client_created_at: refund.clientCreatedAt,
+  local_seq: refund.localSeq,
+});
+
+/**
+ * Records a refund locally: refund + refund_lines + restock movements + order
+ * state transition + outbox, one tx (same atomicity guarantee as recordSale).
+ * Restock reuses the 1B `stock.movement` fact path so the server projects
+ * inventory with no new movement handling. Order state becomes `refunded` when
+ * every line is fully refunded, else `partially_refunded`.
+ */
+export function recordRefund(driver: SqlDriver, refund: LocalRefundInput): void {
+  if (!refund.staffId) {
+    throw new Error('recordRefund: staffId is required — every refund is attributed (FR-5.1)');
+  }
+  if (refund.lines.length === 0) {
+    throw new Error('recordRefund: at least one refund line is required');
+  }
+  driver.tx(() => {
+    driver.run(
+      `INSERT INTO refunds (id, order_id, staff_id, approved_by, currency, total_amount,
+         tax_amount, tax_lines, tender_type, card_ref, card_last4, client_created_at, local_seq)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        refund.id,
+        refund.orderId,
+        refund.staffId,
+        refund.approvedBy ?? null,
+        refund.currency,
+        refund.totalAmount,
+        refund.taxAmount,
+        JSON.stringify(wireTaxLines(refund.taxLines)),
+        refund.tender,
+        refund.cardRef ?? null,
+        refund.cardLast4 ?? null,
+        refund.clientCreatedAt,
+        refund.localSeq,
+      ],
+    );
+    for (const line of refund.lines) {
+      driver.run(
+        `INSERT INTO refund_lines (id, refund_id, order_line_id, variant_id, qty, amount, restock)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          line.id,
+          refund.id,
+          line.orderLineId,
+          line.variantId ?? null,
+          line.qty,
+          line.amount,
+          line.restock ? 1 : 0,
+        ],
+      );
+    }
+    for (const movement of refund.movements) {
+      driver.run(
+        `INSERT INTO stock_movements (id, variant_id, location_id, qty_delta, movement_type, ref_order_id, client_created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          movement.id,
+          movement.variantId,
+          movement.locationId,
+          movement.qtyDelta,
+          movement.movementType,
+          refund.orderId,
+          refund.clientCreatedAt,
+        ],
+      );
+    }
+
+    // Derive the order's new state from cumulative refunded qty vs. sold qty.
+    const lines = driver.all<{ id: string; qty: number }>(
+      `SELECT id, qty FROM order_lines WHERE order_id = ?`,
+      [refund.orderId],
+    );
+    const fullyRefunded = lines.every((orderLine) => {
+      const refunded =
+        driver.get<{ n: number }>(
+          `SELECT COALESCE(SUM(qty), 0) AS n FROM refund_lines WHERE order_line_id = ?`,
+          [orderLine.id],
+        )?.n ?? 0;
+      return refunded >= orderLine.qty;
+    });
+    driver.run(`UPDATE orders SET state = ? WHERE id = ?`, [
+      lines.length > 0 && fullyRefunded ? 'refunded' : 'partially_refunded',
+      refund.orderId,
+    ]);
+
+    driver.run(`INSERT INTO outbox (fact_type, entity_id, payload) VALUES (?, ?, ?)`, [
+      'refund.completed',
+      refund.id,
+      JSON.stringify(refundFactPayload(refund)),
+    ]);
+    for (const movement of refund.movements) {
+      driver.run(`INSERT INTO outbox (fact_type, entity_id, payload) VALUES (?, ?, ?)`, [
+        'stock.movement',
+        movement.id,
+        JSON.stringify(movementFactPayload(movement, refund.orderId)),
+      ]);
+    }
+  });
+}
+
 export function pendingCount(driver: SqlDriver): number {
   return (
     driver.get<{ n: number }>(`SELECT COUNT(*) AS n FROM outbox WHERE pushed_at IS NULL`)?.n ?? 0
@@ -219,10 +371,17 @@ interface OutboxRow {
   batch_id: string | null;
 }
 
-const toFact = (row: OutboxRow): SyncBatchBody['facts'][number] =>
-  row.fact_type === 'order.completed'
-    ? { type: 'order.completed', order: JSON.parse(row.payload) as Record<string, unknown> }
-    : { type: 'stock.movement', movement: JSON.parse(row.payload) as Record<string, unknown> };
+const toFact = (row: OutboxRow): SyncBatchBody['facts'][number] => {
+  const payload = JSON.parse(row.payload) as Record<string, unknown>;
+  switch (row.fact_type) {
+    case 'order.completed':
+      return { type: 'order.completed', order: payload };
+    case 'refund.completed':
+      return { type: 'refund.completed', refund: payload };
+    default:
+      return { type: 'stock.movement', movement: payload };
+  }
+};
 
 /**
  * Claims the next batch of pending facts. If a previous claim was never

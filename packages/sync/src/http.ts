@@ -61,6 +61,7 @@ export interface SyncBatchBody {
   client: { register_id: string; app_version?: string; schema_rev?: number };
   facts: (
     | { type: 'order.completed'; order: Row }
+    | { type: 'refund.completed'; refund: Row }
     | { type: 'stock.movement'; movement: Row }
   )[];
 }

@@ -19,6 +19,9 @@ const EXPECTED_TABLES = [
   'orders',
   'order_lines',
   'payments',
+  'refunds',
+  'refund_lines',
+  'parked_carts',
   'stock_movements',
   'outbox',
 ];

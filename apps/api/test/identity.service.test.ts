@@ -27,6 +27,7 @@ afterAll(async () => {
 const signupInput = {
   email: 'aling.nena@example.ph',
   password: 'kape-barako-1250',
+  name: 'Aling Nena',
   storeName: 'Bahay Kubo Grocers',
   currency: 'PHP',
 };
@@ -90,6 +91,7 @@ describe('identity service', () => {
     const identity_result = await identity.signup({
       email: 'cashier-seed@example.test',
       password: 'a-long-password',
+      name: 'Seed Owner',
       storeName: 'Seed Store',
       currency: 'SGD',
     });

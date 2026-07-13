@@ -6,8 +6,9 @@ export const signupSchema = z.object({
   email: z.string().email().max(254),
   // NIST-style: length over composition rules; breached-password check Phase 1.
   password: z.string().min(10).max(128),
+  name: z.string().min(1).max(120),
   store_name: z.string().min(1).max(120),
-  currency: z.string().regex(/^[A-Z]{3}$/, 'ISO 4217 code, e.g. PHP'),
+  currency: z.string().regex(/^[A-Z]{3}$/, 'ISO 4217 code, e.g. SGD'),
 });
 
 export const loginSchema = z.object({

@@ -1,3 +1,4 @@
+import { createHash, randomInt } from 'node:crypto';
 import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { and, eq } from 'drizzle-orm';
@@ -5,14 +6,29 @@ import { authenticator } from 'otplib';
 import { ulid } from 'ulid';
 import { ARGON2_OPTIONS } from '../../common/hashing';
 import { DbService } from '../../db/db.service';
-import { roles, staff, stores, taxCategories, taxRates } from '../../db/schema';
+import {
+  activationCodes,
+  locations,
+  registers,
+  roles,
+  staff,
+  stores,
+  taxCategories,
+  taxRates,
+} from '../../db/schema';
 
 export interface SignupInput {
   email: string;
   password: string;
+  name: string;
   storeName: string;
   currency: string;
 }
+
+/** Crockford base32 (no I, L, O, U) — matches the device-activation code alphabet. */
+const CODE_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+const CODE_LENGTH = 8;
+const CODE_TTL_MS = 24 * 60 * 60 * 1000;
 
 export interface Identity {
   staffId: string;
@@ -80,7 +96,7 @@ export class IdentityService {
         await tx.insert(staff).values({
           id: staffId,
           storeId,
-          name: input.email.split('@')[0] ?? input.email,
+          name: (input.name ?? '').trim() || input.email.split('@')[0] || input.email,
           email: input.email,
           passwordHash,
           roleId,
@@ -105,7 +121,55 @@ export class IdentityService {
           name: defaultRate.name,
           rateBp: defaultRate.rateBp,
         });
-        return { staffId, storeId, name: input.email, email: input.email, roleName: 'Owner' };
+
+        // 1E (FR-10.1): provision the register loop in the same transaction so
+        // the onboarding checklist has a real activation code the instant signup
+        // returns. Only the sha-256 hash is stored; the plaintext is echoed into
+        // stores.settings.onboarding (owner-session readable) until the device
+        // activates, at which point GET /onboarding/status stops echoing it.
+        const locationId = ulid();
+        await tx.insert(locations).values({ id: locationId, storeId, name: 'Main' });
+        const registerId = ulid();
+        await tx.insert(registers).values({
+          id: registerId,
+          storeId,
+          locationId,
+          name: 'Register 1',
+          gridLayout: {},
+        });
+        const code = Array.from(
+          { length: CODE_LENGTH },
+          () => CODE_ALPHABET[randomInt(CODE_ALPHABET.length)],
+        ).join('');
+        const expiresAt = new Date(Date.now() + CODE_TTL_MS);
+        await tx.insert(activationCodes).values({
+          id: ulid(),
+          storeId,
+          registerId,
+          codeHash: createHash('sha256').update(code).digest('hex'),
+          expiresAt,
+          createdBy: staffId,
+        });
+        await tx
+          .update(stores)
+          .set({
+            settings: {
+              onboarding: {
+                activation_code: code,
+                activation_expires_at: expiresAt.toISOString(),
+                register_id: registerId,
+              },
+            },
+          })
+          .where(eq(stores.id, storeId));
+
+        return {
+          staffId,
+          storeId,
+          name: (input.name ?? '').trim() || input.email,
+          email: input.email,
+          roleName: 'Owner',
+        };
       },
     );
   }

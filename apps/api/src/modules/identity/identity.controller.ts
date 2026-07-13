@@ -35,6 +35,7 @@ export class IdentityController {
     const identity = await this.identity.signup({
       email: input.email,
       password: input.password,
+      name: input.name,
       storeName: input.store_name,
       currency: input.currency,
     });

@@ -6,6 +6,17 @@ export const ulidSchema = z
   .string()
   .regex(/^[0-9A-HJKMNP-TV-Z]{26}$/, 'ULID expected');
 
+/** Store-profile update (1E onboarding wizard step 2 + ADM-17). All optional — a partial PATCH. */
+export const updateStoreSchema = z
+  .object({
+    name: z.string().min(1).max(120),
+    currency: z.string().regex(/^[A-Z]{3}$/, 'ISO 4217 code, e.g. SGD'),
+    timezone: z.string().min(1).max(64),
+    price_mode: z.enum(['tax_inclusive', 'tax_exclusive']),
+  })
+  .partial();
+export type UpdateStoreInput = z.infer<typeof updateStoreSchema>;
+
 export const createLocationSchema = z.object({
   name: z.string().min(1).max(120),
   address: z

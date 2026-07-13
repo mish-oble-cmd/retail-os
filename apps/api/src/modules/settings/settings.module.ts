@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { LocationsService } from './locations.service';
 import { RegistersService } from './registers.service';
 import { LocationsController, RegistersController } from './settings.controller';
+import { StoreController } from './store.controller';
+import { StoreService } from './store.service';
 
 /**
  * settings module (FR-10.2, Phase 1/1A: locations, registers, activation
@@ -9,8 +11,8 @@ import { LocationsController, RegistersController } from './settings.controller'
  * import this module's exported services, never its internals or tables.
  */
 @Module({
-  controllers: [LocationsController, RegistersController],
-  providers: [LocationsService, RegistersService],
-  exports: [LocationsService, RegistersService],
+  controllers: [LocationsController, RegistersController, StoreController],
+  providers: [LocationsService, RegistersService, StoreService],
+  exports: [LocationsService, RegistersService, StoreService],
 })
 export class SettingsModule {}

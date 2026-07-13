@@ -74,9 +74,41 @@ _Shipped on `phase-1/sell-flow` (full report: `.superpowers/sdd/1c-report.md`): 
 5. **Parked carts are device-local** — a `parked_carts` SQLite table on the register, per FR-1.7 (named, per-register, survive restart); not part of the sync outbox.
 6. **Task order:** domain sell/refund primitives → device data-layer additions (`parked_carts`, refund fact, wa-sqlite driver) → POS-03 Sell → POS-14 discount + POS-13 custom sale → POS-04 Payment → POS-05 Receipt (+ `/r` page + email) → POS-06 park/retrieve → POS-07 orders → POS-08 refund (+ escalation) → E2E + close-out.
 
-### 1D Shifts & cash
+### 1D Shifts & cash — ✅ complete 2026-07-13
 
 Open/close with counts, paid in/out, over/short, Z-summary printable.
+
+_Shipped on `phase-1/sell-flow` (continues the Phase 1 stack): the offline-first
+cash-drawer lifecycle across all four apps, following the 1C fact-ingest shape.
+**domain** — `calculateExpectedCash`, `calculateOverShort`, `buildZReport`
+(pure integer minor units; the Z snapshot the cashier prints and the server
+stores). **@retailos/sync** — device schema v3 (`shifts` with a partial-unique
+one-open-per-register index, `cash_movements`, `orders.shift_id` via guarded
+ALTER for upgrading devices), `openShift`/`recordCashMovement`/`closeShift`/
+`getActiveShift`/`getShiftZSource`, three new outbox facts (`shift.opened`,
+`cash.movement`, `shift.closed`), `shift_id` stamped on `recordSale`.
+**api** — migration `0006_shifts` (tenant FKs, RLS, grants: shifts INSERT+UPDATE,
+cash_movements append-only), `ingestShiftOpened`/`ingestCashMovement`/
+`ingestShiftClosed` (close-before-open rolls the batch back to retry, like a
+refund awaiting its order), `orders.shift_id` passthrough, read-only
+`GET /shifts` + `/shifts/:id`. **admin** — Shifts list + Z-report detail
+(renders the stored `z_snapshot` verbatim + cash movements). **pos-web** —
+POS-10 open-shift float gate (denomination chips + NumberPad, Sell locked until
+open), Cash sheet (paid in/out + no-sale drawer behind Owner PIN), blind close
+with expected hidden until submit, Owner-gated over/short reveal (a lone Cashier
+gets "recorded — see your manager"), printable Z-report.
+
+Verification — full-repo gate `pnpm turbo typecheck lint test` **33/33 tasks**
+(domain +9, sync +6, api +5). Browser-verified the whole loop against the real
+sql.js/OPFS device store: Ben (Cashier) forced to count the ₱2,000 float before
+Sell → cash sale → ₱50 paid-out → blind count ₱2,000 vs expected ₱2,015 →
+over/short **Owner-gated** (Ana's PIN reveals **Short −₱15.00**) → close returns
+to the open-shift gate. **Live E2E — PASS, 20/20** against real Postgres
+(`.superpowers/sdd/1d-e2e.mjs`): activate → `shift.opened` (row `open`, **0006
+RLS grant works on real PG**) → cash order stamped `shift_id` → `cash.movement`
+paid-out → `shift.closed` (state `closed`, `over_short` −1200, **Z snapshot
+round-trips to Postgres**) → idempotent replay (no double-close) → close for an
+unknown shift rejected (batch rolls back). Report: `.superpowers/sdd/1d-report.md`._
 
 ### 1E Onboarding
 
@@ -96,7 +128,7 @@ _Shipped on `phase-1/staff-pin`: fixed Cashier role (signup seed + `0004` migrat
 - [x] Split tender sale (cash + manual card) _(1C)_
 - [x] Refund one line of yesterday's order to cash, restock toggled _(1C)_
 - [ ] Kill the network mid-shift → 10 sales complete offline → reconnect → all appear in admin exactly once (pull the plug demo!)
-- [ ] Close shift: blind count, over/short shown, Z-report prints
+- [x] Close shift: blind count, over/short shown, Z-report prints _(1D)_
 - [ ] Admin: orders list shows the day; order detail timeline correct
 - [ ] Signup-to-first-sale timed run < 15 min
 

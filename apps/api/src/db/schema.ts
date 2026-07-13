@@ -199,6 +199,8 @@ export const categories = pgTable(
     parentId: text('parent_id'),
     name: text('name').notNull(),
     sort: integer('sort').notNull().default(0),
+    /** Set when created by the onboarding sample-catalog seed (1E); NULL for real rows. */
+    sampleBatchId: text('sample_batch_id'),
     ...syncRev,
     ...timestamps,
   },
@@ -234,6 +236,8 @@ export const products = pgTable(
       .default('active'),
     hasVariants: boolean('has_variants').notNull().default(false),
     custom: jsonb('custom').notNull().default({}),
+    /** Set when created by the onboarding sample-catalog seed (1E); NULL for real rows. */
+    sampleBatchId: text('sample_batch_id'),
     ...syncRev,
     ...timestamps,
   },
@@ -268,6 +272,8 @@ export const variants = pgTable(
     compareAtAmount: bigint('compare_at_amount', { mode: 'number' }),
     costAmount: bigint('cost_amount', { mode: 'number' }),
     trackStock: boolean('track_stock').notNull().default(true),
+    /** Set when created by the onboarding sample-catalog seed (1E); NULL for real rows. */
+    sampleBatchId: text('sample_batch_id'),
     ...syncRev,
     ...timestamps,
   },
@@ -318,6 +324,8 @@ export const inventoryLevels = pgTable(
     onHand: bigint('on_hand', { mode: 'number' }).notNull().default(0),
     reorderPoint: bigint('reorder_point', { mode: 'number' }),
     reorderQty: bigint('reorder_qty', { mode: 'number' }),
+    /** Set when created by the onboarding sample-catalog seed (1E); NULL for real rows. */
+    sampleBatchId: text('sample_batch_id'),
     ...syncRev,
     ...timestamps,
   },

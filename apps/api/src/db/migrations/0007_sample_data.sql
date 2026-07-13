@@ -12,3 +12,9 @@ CREATE INDEX products_sample_batch_idx ON products (store_id, sample_batch_id) W
 CREATE INDEX variants_sample_batch_idx ON variants (store_id, sample_batch_id) WHERE sample_batch_id IS NOT NULL;
 CREATE INDEX categories_sample_batch_idx ON categories (store_id, sample_batch_id) WHERE sample_batch_id IS NOT NULL;
 CREATE INDEX inventory_levels_sample_batch_idx ON inventory_levels (store_id, sample_batch_id) WHERE sample_batch_id IS NOT NULL;
+
+-- Sample purge deletes practice-sold variants, so it must first detach the
+-- variant back-reference on any order line (the line snapshots name + price, so
+-- reports survive). A COLUMN-scoped UPDATE keeps order_lines otherwise
+-- append-only (invariant 4): name/price/qty stay immutable to the app role.
+GRANT UPDATE (variant_id) ON order_lines TO retailos_app;

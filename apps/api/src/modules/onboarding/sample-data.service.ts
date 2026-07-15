@@ -1,5 +1,5 @@
 import { ConflictException, Injectable } from '@nestjs/common';
-import { eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { ulid } from 'ulid';
 import { DbService } from '../../db/db.service';
 import {
@@ -8,8 +8,13 @@ import {
   inventoryLevels,
   locations,
   orderLines,
+  orders,
+  payments,
   products,
+  refundLines,
+  refunds,
   registers,
+  stockMovements,
   stores,
   taxCategories,
   variants,
@@ -143,59 +148,150 @@ export class SampleDataService {
     });
   }
 
+  /**
+   * Delete the sample batch and its practice-sale ledger. A practice sale writes
+   * an immutable stock_movement + order that the *app* role cannot delete
+   * (append-only ledger, invariant 4), and those rows FK-block deleting the sold
+   * sample variant. So purge runs under the explicitly-justified admin
+   * escalation (the same BYPASSRLS role signup uses to create a tenant) — with
+   * every statement scoped by store_id since RLS no longer applies. Pure
+   * practice orders (every line a sample product) are deleted outright; a mixed
+   * order that also holds a real line keeps that line — only its sample lines are
+   * detached (variant_id nulled; the line snapshots name + price, so the real
+   * sale's history survives).
+   */
   async purge(storeId: string): Promise<PurgeResult> {
-    return this.db.tenants.forStore(storeId).tx(async (tx) => {
-      const storeRow = await tx
-        .select({ settings: stores.settings })
-        .from(stores)
-        .where(eq(stores.id, storeId));
-      const settings = (storeRow[0]?.settings ?? {}) as Record<string, unknown>;
-      const onboarding = (settings.onboarding ?? {}) as OnboardingSettings;
-      const batchId = onboarding.sample_batch_id;
-      if (!batchId) return { removed: 0 };
+    return this.db.tenants.dangerouslyCrossTenant(
+      'onboarding sample purge: removes the sample batch and its practice-sale ledger; the app role is append-only for stock_movements/orders, so this admin-scoped delete is the only clean path (every statement is store_id-scoped)',
+      async (tx) => {
+        const storeRow = await tx
+          .select({ settings: stores.settings })
+          .from(stores)
+          .where(eq(stores.id, storeId));
+        const settings = (storeRow[0]?.settings ?? {}) as Record<string, unknown>;
+        const onboarding = (settings.onboarding ?? {}) as OnboardingSettings;
+        const batchId = onboarding.sample_batch_id;
+        if (!batchId) return { removed: 0 };
 
-      // Null the FK on any practice-sale lines first — the line already snapshots
-      // name + unit price, so order history and reports are preserved.
-      const batchVariants = await tx
-        .select({ id: variants.id })
-        .from(variants)
-        .where(eq(variants.sampleBatchId, batchId));
-      const variantIds = batchVariants.map((v) => v.id);
-      if (variantIds.length > 0) {
+        const batchVariants = await tx
+          .select({ id: variants.id })
+          .from(variants)
+          .where(and(eq(variants.storeId, storeId), eq(variants.sampleBatchId, batchId)));
+        const variantIds = batchVariants.map((v) => v.id);
+        const sampleSet = new Set(variantIds);
+
+        // Classify every order touching a sample variant: pure practice (delete)
+        // vs mixed with a real line (keep, detach the sample lines only).
+        const practiceOrderIds: string[] = [];
+        const mixedOrderIds: string[] = [];
+        if (variantIds.length > 0) {
+          const lines = await tx
+            .select({ orderId: orderLines.orderId, variantId: orderLines.variantId })
+            .from(orderLines)
+            .where(eq(orderLines.storeId, storeId));
+          const agg = new Map<string, { sample: boolean; other: boolean }>();
+          for (const line of lines) {
+            const entry = agg.get(line.orderId) ?? { sample: false, other: false };
+            if (line.variantId && sampleSet.has(line.variantId)) entry.sample = true;
+            else entry.other = true;
+            agg.set(line.orderId, entry);
+          }
+          for (const [orderId, entry] of agg) {
+            if (!entry.sample) continue;
+            (entry.other ? mixedOrderIds : practiceOrderIds).push(orderId);
+          }
+        }
+
+        // Pure practice orders: delete children then the order.
+        if (practiceOrderIds.length > 0) {
+          const refundRows = await tx
+            .select({ id: refunds.id })
+            .from(refunds)
+            .where(and(eq(refunds.storeId, storeId), inArray(refunds.orderId, practiceOrderIds)));
+          const refundIds = refundRows.map((r) => r.id);
+          if (refundIds.length > 0) {
+            await tx
+              .delete(refundLines)
+              .where(and(eq(refundLines.storeId, storeId), inArray(refundLines.refundId, refundIds)));
+            await tx
+              .delete(refunds)
+              .where(and(eq(refunds.storeId, storeId), inArray(refunds.id, refundIds)));
+          }
+          await tx
+            .delete(payments)
+            .where(and(eq(payments.storeId, storeId), inArray(payments.orderId, practiceOrderIds)));
+          await tx
+            .delete(orderLines)
+            .where(and(eq(orderLines.storeId, storeId), inArray(orderLines.orderId, practiceOrderIds)));
+          await tx
+            .delete(orders)
+            .where(and(eq(orders.storeId, storeId), inArray(orders.id, practiceOrderIds)));
+        }
+
+        // Mixed orders: detach only the sample lines, keeping the real sale.
+        if (mixedOrderIds.length > 0 && variantIds.length > 0) {
+          await tx
+            .update(orderLines)
+            .set({ variantId: null })
+            .where(
+              and(
+                eq(orderLines.storeId, storeId),
+                inArray(orderLines.orderId, mixedOrderIds),
+                inArray(orderLines.variantId, variantIds),
+              ),
+            );
+        }
+
+        // Now the sample variants have no order/movement references — delete them.
+        if (variantIds.length > 0) {
+          await tx
+            .delete(stockMovements)
+            .where(and(eq(stockMovements.storeId, storeId), inArray(stockMovements.variantId, variantIds)));
+          await tx
+            .delete(barcodes)
+            .where(and(eq(barcodes.storeId, storeId), inArray(barcodes.variantId, variantIds)));
+        }
+
+        const productRows = await tx
+          .select({ id: products.id })
+          .from(products)
+          .where(and(eq(products.storeId, storeId), eq(products.sampleBatchId, batchId)));
+        const removed = productRows.length;
+
         await tx
-          .update(orderLines)
-          .set({ variantId: null })
-          .where(inArray(orderLines.variantId, variantIds));
-        await tx.delete(barcodes).where(inArray(barcodes.variantId, variantIds));
-      }
-
-      const productRows = await tx
-        .select({ id: products.id })
-        .from(products)
-        .where(eq(products.sampleBatchId, batchId));
-      const removed = productRows.length;
-
-      await tx.delete(inventoryLevels).where(eq(inventoryLevels.sampleBatchId, batchId));
-      await tx.delete(variants).where(eq(variants.sampleBatchId, batchId));
-      await tx.delete(products).where(eq(products.sampleBatchId, batchId));
-      await tx.delete(categories).where(eq(categories.sampleBatchId, batchId));
-
-      // Clear the sample tiles from Register 1's grid.
-      const regRows = await tx.select({ id: registers.id }).from(registers).limit(1);
-      if (regRows[0]) {
+          .delete(inventoryLevels)
+          .where(and(eq(inventoryLevels.storeId, storeId), eq(inventoryLevels.sampleBatchId, batchId)));
         await tx
-          .update(registers)
-          .set({ gridLayout: { columns: 4, tiles: [] }, updatedAt: new Date() })
-          .where(eq(registers.id, regRows[0].id));
-      }
+          .delete(variants)
+          .where(and(eq(variants.storeId, storeId), eq(variants.sampleBatchId, batchId)));
+        await tx
+          .delete(products)
+          .where(and(eq(products.storeId, storeId), eq(products.sampleBatchId, batchId)));
+        await tx
+          .delete(categories)
+          .where(and(eq(categories.storeId, storeId), eq(categories.sampleBatchId, batchId)));
 
-      const { sample_batch_id: _dropped, ...restOnboarding } = onboarding;
-      await tx
-        .update(stores)
-        .set({ settings: { ...settings, onboarding: restOnboarding } })
-        .where(eq(stores.id, storeId));
+        // Clear the sample tiles from Register 1's grid.
+        const regRows = await tx
+          .select({ id: registers.id })
+          .from(registers)
+          .where(eq(registers.storeId, storeId))
+          .limit(1);
+        if (regRows[0]) {
+          await tx
+            .update(registers)
+            .set({ gridLayout: { columns: 4, tiles: [] }, updatedAt: new Date() })
+            .where(and(eq(registers.storeId, storeId), eq(registers.id, regRows[0].id)));
+        }
 
-      return { removed };
-    });
+        const { sample_batch_id: _dropped, ...restOnboarding } = onboarding;
+        await tx
+          .update(stores)
+          .set({ settings: { ...settings, onboarding: restOnboarding } })
+          .where(eq(stores.id, storeId));
+
+        return { removed };
+      },
+    );
   }
 }

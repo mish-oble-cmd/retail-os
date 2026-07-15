@@ -110,9 +110,41 @@ paid-out → `shift.closed` (state `closed`, `over_short` −1200, **Z snapshot
 round-trips to Postgres**) → idempotent replay (no double-close) → close for an
 unknown shift rejected (batch rolls back). Report: `.superpowers/sdd/1d-report.md`._
 
-### 1E Onboarding
+### 1E Onboarding — ✅ complete 2026-07-13
 
 Signup wizard (store, currency, tax rate, location+register auto-created), sample catalog import offer, activation-code flow for the register, "first sale" checklist on empty dashboard. **Measure: fresh signup → first sale < 15 min.**
+
+_Shipped on `phase-1/sell-flow` (ADM-01, FR-10.1): signup now provisions the whole
+register loop in one transaction — a **Main location + Register 1 + an activation
+code** whose plaintext is echoed to `stores.settings.onboarding` (owner-session
+readable, cleared once the device activates) — plus owner `name` and a
+`PATCH /settings/store` for the profile step. Migration `0007` adds a nullable
+`sample_batch_id` to products/variants/categories/inventory so the **Singapore SGD
+sample catalog** (~40 convenience-store products with barcodes, stock, and a register
+grid — the roadmap's canonical first-client dataset; the ADM-01 mockup's Filipino copy
+is illustrative only) loads and **purges in one click**. Purge runs under the justified
+`retailos_admin` escalation and removes the practice-sale ledger too: pure practice
+orders are deleted outright, mixed orders keep their real line (only the sample line is
+detached). `GET /onboarding/status` derives the five checklist steps from live data
+(account/store/catalog/register/first_sale) and echoes the code until a device connects.
+Admin: the **3-step wizard** (Account → Store profile w/ VAT-inclusive segmented control
+→ Starting catalog choice cards, with the mockup's validation states) and a **Home
+first-sale checklist** (time-countdown headline, inline mono activation code, first-sale
+step disabled-with-reason until a register connects, dismissible) over an em-dash
+StatCard empty state. Real dashboard analytics stay ADM-02 (later phase)._
+
+Verification — full-repo gate `pnpm turbo typecheck lint test` **33/33 tasks** (api
+138 tests, incl. migration 0007, signup provisioning, sample seed/purge with a
+mixed-order guard, and onboarding status). Browser-verified the wizard (Account → Store
+profile) and the Home checklist against the real API (inline code `QBTG3E7N · expires in
+24 h`, first-sale step "Waiting for a register", em-dash SGD StatCards, no console
+errors). **Live E2E — PASS, 29/29** against real Postgres (`.superpowers/sdd/1e-e2e.mjs`):
+signup → Main location + Register 1 + echoed code → store-profile PATCH → status
+(account/store done, register/catalog/first-sale not, first-sale blocked) → load sample
+(41 products tagged) → status catalog done → activate device with the echoed code →
+status register connected + code no longer echoed → first sale → status first-sale done
+→ purge (41 removed, pure practice order + line + stock movement deleted, catalog + sales
+back to empty). Report: `.superpowers/sdd/1e-report.md`._
 
 ### 1F Staff PIN — ✅ complete 2026-07-12
 
@@ -130,7 +162,7 @@ _Shipped on `phase-1/staff-pin`: fixed Cashier role (signup seed + `0004` migrat
 - [ ] Kill the network mid-shift → 10 sales complete offline → reconnect → all appear in admin exactly once (pull the plug demo!)
 - [x] Close shift: blind count, over/short shown, Z-report prints _(1D)_
 - [ ] Admin: orders list shows the day; order detail timeline correct
-- [ ] Signup-to-first-sale timed run < 15 min
+- [x] Signup-to-first-sale timed run < 15 min _(1E)_
 
 ## Out of scope (resist!)
 

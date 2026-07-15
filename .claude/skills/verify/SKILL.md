@@ -19,9 +19,12 @@ Servers are defined in `.claude/launch.json` (preview_start names):
 
 ## Drive
 
-- Signup at `/signup` creates store + Owner only. **A fresh store has no tax
-  category, location, or register until 1E onboarding ships** — seed them via
-  psql before exercising catalog stock or registers.
+- Signup at `/signup` (the 1E wizard) provisions store + Owner + a "Standard" tax
+  category + a **Main location + Register 1 + an activation code** (echoed to
+  `stores.settings.onboarding`, surfaced by `GET /onboarding/status` and the Home
+  checklist). Load the SGD sample catalog via the wizard's step 3 or
+  `POST /onboarding/sample-catalog`; `DELETE` the same path purges it (and its
+  practice-sale ledger) in one click.
 - Seeded IDs must match the Crockford ULID alphabet `[0-9A-HJKMNP-TV-Z]{26}`
   — no I, L, O, U — or every endpoint 400s with "Validation failed".
 - File-input flows (CSV import) drive fine via `DataTransfer` + synthetic

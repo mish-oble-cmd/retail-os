@@ -8,6 +8,7 @@ import { CustomersModule } from './modules/customers/customers.module';
 import { IdentityModule } from './modules/identity/identity.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { LoyaltyModule } from './modules/loyalty/loyalty.module';
+import { OnboardingModule } from './modules/onboarding/onboarding.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { ReportsModule } from './modules/reports/reports.module';
@@ -37,6 +38,7 @@ import { WebhooksModule } from './modules/webhooks/webhooks.module';
     WebhooksModule,
     BillingModule,
     SettingsModule,
+    OnboardingModule,
   ],
   controllers: [HealthController],
 })

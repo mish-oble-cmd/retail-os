@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>POS-13 Custom sale sheet — RetailOS mockup</title>
+<style>
+  /* ===== Counter design tokens — keep in sync with 04-design/design-system.md ===== */
+  :root {
+    --color-primary: #1A4D2E;
+    --color-primary-hover: #143D24;
+    --color-accent: #F5A623;
+    --color-success: #1E8E3E;
+    --color-warning: #F29900;
+    --color-danger: #D93025;
+    --color-bg: #F7F8F7;
+    --color-surface: #FFFFFF;
+    --color-ink: #1C1F1D;
+    --color-ink-muted: #5C6660;
+    --color-border: #E2E6E3;
+    --radius: 8px;
+    --radius-card: 12px;
+    --shadow-card: 0 1px 3px rgba(28, 31, 29, 0.10);
+    --shadow-overlay: 0 8px 24px rgba(28, 31, 29, 0.18);
+    --font-ui: "Inter", system-ui, -apple-system, sans-serif;
+    --font-money: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  }
+  [data-theme="dark"] {
+    --color-primary: #5CB584; --color-primary-hover: #6FC494; --color-accent: #F5B84D;
+    --color-success: #4CC272; --color-warning: #F5A623; --color-danger: #F0655A;
+    --color-bg: #121513; --color-surface: #1C201D; --color-ink: #E8ECE9;
+    --color-ink-muted: #98A29C; --color-border: #2B302D;
+  }
+
+  * { box-sizing: border-box; margin: 0; }
+  body { background: #DDE1DE; font-family: var(--font-ui); color: var(--color-ink); padding: 24px; }
+  .money { font-family: var(--font-money); font-variant-numeric: tabular-nums; }
+  svg.ic { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.75;
+    stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  svg.ic.sm { width: 20px; height: 20px; }
+
+  .canvas-label { max-width: 1280px; margin: 32px auto 8px; font-size: 14px; color: #444; }
+  .canvas { width: 1280px; height: 800px; margin: 0 auto; background: var(--color-bg);
+    border-radius: 4px; overflow: hidden; position: relative; box-shadow: var(--shadow-overlay); }
+  .note { max-width: 1280px; margin: 8px auto 0; font-size: 13px; color: #555; }
+
+  /* Dimmed sell screen behind the sheet */
+  .backdrop { position: absolute; inset: 0; background: rgba(28, 31, 29, 0.45); z-index: 1; }
+  .ghost { position: absolute; inset: 0; padding: 16px; filter: blur(1px); }
+  .ghost .bar { height: 56px; background: var(--color-surface); border-radius: var(--radius); margin-bottom: 12px; }
+  .ghost .row { display: flex; gap: 10px; }
+  .ghost .tile { width: 168px; height: 108px; background: var(--color-surface); border-radius: var(--radius-card); }
+
+  /* Sheet */
+  .sheet { position: absolute; z-index: 2; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 720px; background: var(--color-surface); border-radius: var(--radius-card);
+    box-shadow: var(--shadow-overlay); padding: 28px 32px 32px; }
+  .sheet h1 { font-size: 24px; font-weight: 600; letter-spacing: -0.01em; }
+  .sheet .close { position: absolute; top: 20px; right: 20px; width: 48px; height: 48px; border: 1px solid var(--color-border);
+    border-radius: var(--radius); background: var(--color-surface); color: var(--color-ink-muted);
+    display: flex; align-items: center; justify-content: center; }
+  .sheet .sub { font-size: 14px; color: var(--color-ink-muted); margin: 4px 0 20px; }
+
+  .cols { display: flex; gap: 28px; }
+  .fields { flex: 1; display: flex; flex-direction: column; gap: 16px; }
+  label { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--color-ink-muted); display: block; margin-bottom: 6px; }
+  .input { height: 52px; width: 100%; border: 1px solid var(--color-border); border-radius: var(--radius);
+    background: var(--color-surface); font-size: 18px; padding: 0 14px; display: flex; align-items: center; }
+  .input.focus { border: 2px solid var(--color-primary); box-shadow: 0 0 0 3px rgba(26, 77, 46, 0.15); }
+  .input.error { border: 2px solid var(--color-danger); }
+  .err-text { font-size: 14px; color: var(--color-danger); margin-top: 6px; }
+  .amount-display { height: 72px; border: 1px solid var(--color-border); border-radius: var(--radius);
+    background: var(--color-bg); font-size: 32px; font-weight: 600; display: flex; align-items: center;
+    justify-content: flex-end; padding: 0 16px; }
+  .tax-opts { display: flex; flex-direction: column; gap: 8px; }
+  .tax-opt { min-height: 48px; border: 1px solid var(--color-border); border-radius: var(--radius);
+    display: flex; align-items: center; gap: 10px; padding: 0 14px; font-size: 16px; }
+  .tax-opt.sel { border: 2px solid var(--color-primary); font-weight: 500; }
+  .tax-opt .r { width: 18px; height: 18px; border-radius: 999px; border: 2px solid var(--color-border); flex: none; }
+  .tax-opt.sel .r { border-color: var(--color-primary); background: var(--color-primary); box-shadow: inset 0 0 0 3px var(--color-surface); }
+  .tax-opt small { margin-left: auto; color: var(--color-ink-muted); }
+
+  .pad { display: grid; grid-template-columns: repeat(3, 88px); grid-auto-rows: 64px; gap: 10px; align-content: start; }
+  .key { border: 1px solid var(--color-border); border-radius: var(--radius-card); background: var(--color-surface);
+    font-size: 24px; font-weight: 500; font-family: var(--font-ui); color: var(--color-ink); box-shadow: var(--shadow-card); }
+  .key.fn { font-size: 16px; color: var(--color-ink-muted); }
+
+  .foot { display: flex; gap: 12px; margin-top: 24px; }
+  .btn-ghost { height: 56px; padding: 0 24px; border: 1px solid var(--color-border); border-radius: var(--radius);
+    background: var(--color-surface); font-size: 18px; font-family: var(--font-ui); color: var(--color-ink); }
+  .btn-primary { flex: 1; height: 56px; border: 0; border-radius: var(--radius);
+    background: var(--color-primary); color: #fff; font-size: 18px; font-weight: 600; font-family: var(--font-ui);
+    display: flex; align-items: center; justify-content: space-between; padding: 0 20px; }
+  .btn-primary[disabled] { opacity: .45; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     SECTION 1 — Primary state: filled, ready to add
+     Canvas: POS desktop/tablet landscape 1280×800 (sheet over dimmed Sell)
+============================================================ -->
+<p class="canvas-label"><strong>POS-13 Custom sale sheet — primary state</strong> (name + price entered · VAT 12% preselected)</p>
+<div class="canvas">
+  <div class="ghost">
+    <div class="bar"></div>
+    <div class="row"><div class="tile"></div><div class="tile"></div><div class="tile"></div><div class="tile"></div></div>
+  </div>
+  <div class="backdrop"></div>
+  <div class="sheet">
+    <h1>Custom sale</h1>
+    <button class="close" aria-label="Close"><svg class="ic sm" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+    <p class="sub">Ad-hoc item — flagged as “custom sale” in reports (FR-1.3)</p>
+    <div class="cols">
+      <div class="fields">
+        <div>
+          <label>Item name</label>
+          <div class="input">Gift basket assembly fee</div>
+        </div>
+        <div>
+          <label>Price</label>
+          <div class="amount-display money">₱150.00</div>
+        </div>
+        <div>
+          <label>Tax category</label>
+          <div class="tax-opts">
+            <div class="tax-opt sel"><span class="r"></span>Standard <small>VAT 12% included</small></div>
+            <div class="tax-opt"><span class="r"></span>VAT-exempt <small>0%</small></div>
+            <div class="tax-opt"><span class="r"></span>Zero-rated <small>0%</small></div>
+          </div>
+        </div>
+      </div>
+      <div class="pad">
+        <button class="key">1</button><button class="key">2</button><button class="key">3</button>
+        <button class="key">4</button><button class="key">5</button><button class="key">6</button>
+        <button class="key">7</button><button class="key">8</button><button class="key">9</button>
+        <button class="key fn">00</button><button class="key">0</button><button class="key fn">⌫</button>
+      </div>
+    </div>
+    <div class="foot">
+      <button class="btn-ghost">Cancel</button>
+      <button class="btn-primary"><span>Add to cart</span><span class="money">₱150.00</span></button>
+    </div>
+  </div>
+</div>
+<p class="note">Sheet, not a page — the cart stays visible dimmed behind (sale context is never lost). NumberPad types minor units right-to-left (“1-5-0-00” → ₱150.00), so no decimal-point key errors. Tax category defaults to the store's standard rate; the primary button restates the amount it will add (verbs + numbers on buttons).</p>
+
+<!-- ============================================================
+     SECTION 2 — Non-happy state: missing price validation
+============================================================ -->
+<p class="canvas-label"><strong>POS-13 Custom sale sheet — validation state</strong> (name present · price still zero · Add disabled)</p>
+<div class="canvas">
+  <div class="ghost">
+    <div class="bar"></div>
+    <div class="row"><div class="tile"></div><div class="tile"></div><div class="tile"></div><div class="tile"></div></div>
+  </div>
+  <div class="backdrop"></div>
+  <div class="sheet">
+    <h1>Custom sale</h1>
+    <button class="close" aria-label="Close"><svg class="ic sm" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+    <p class="sub">Ad-hoc item — flagged as “custom sale” in reports (FR-1.3)</p>
+    <div class="cols">
+      <div class="fields">
+        <div>
+          <label>Item name</label>
+          <div class="input">Plastic twine (per meter)</div>
+        </div>
+        <div>
+          <label>Price</label>
+          <div class="amount-display money" style="border:2px solid var(--color-danger); color:var(--color-ink-muted)">₱0.00</div>
+          <div class="err-text">Enter a price — free items need a 100% discount instead, so the register tape stays honest.</div>
+        </div>
+        <div>
+          <label>Tax category</label>
+          <div class="tax-opts">
+            <div class="tax-opt sel"><span class="r"></span>Standard <small>VAT 12% included</small></div>
+            <div class="tax-opt"><span class="r"></span>VAT-exempt <small>0%</small></div>
+            <div class="tax-opt"><span class="r"></span>Zero-rated <small>0%</small></div>
+          </div>
+        </div>
+      </div>
+      <div class="pad">
+        <button class="key">1</button><button class="key">2</button><button class="key">3</button>
+        <button class="key">4</button><button class="key">5</button><button class="key">6</button>
+        <button class="key">7</button><button class="key">8</button><button class="key">9</button>
+        <button class="key fn">00</button><button class="key">0</button><button class="key fn">⌫</button>
+      </div>
+    </div>
+    <div class="foot">
+      <button class="btn-ghost">Cancel</button>
+      <button class="btn-primary" disabled><span>Add to cart</span><span class="money">₱0.00</span></button>
+    </div>
+  </div>
+</div>
+<p class="note">Zero-price is blocked with a reason and the sanctioned alternative (100% discount keeps an audit trail per FR-1.2) — error says what to do next. Add stays visible-but-disabled so the layout never jumps. This sheet works identically offline (no network dependency at all).</p>
+
+</body>
+</html>

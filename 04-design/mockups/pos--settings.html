@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>POS-12 Settings/diagnostics — RetailOS mockup</title>
+<style>
+  /* ===== Counter design tokens — keep in sync with 04-design/design-system.md ===== */
+  :root {
+    --color-primary: #1A4D2E;
+    --color-primary-hover: #143D24;
+    --color-accent: #F5A623;
+    --color-success: #1E8E3E;
+    --color-warning: #F29900;
+    --color-danger: #D93025;
+    --color-bg: #F7F8F7;
+    --color-surface: #FFFFFF;
+    --color-ink: #1C1F1D;
+    --color-ink-muted: #5C6660;
+    --color-border: #E2E6E3;
+    --radius: 8px;
+    --radius-card: 12px;
+    --shadow-card: 0 1px 3px rgba(28, 31, 29, 0.10);
+    --shadow-overlay: 0 8px 24px rgba(28, 31, 29, 0.18);
+    --font-ui: "Inter", system-ui, -apple-system, sans-serif;
+    --font-money: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  }
+  [data-theme="dark"] {
+    --color-primary: #5CB584; --color-primary-hover: #6FC494; --color-accent: #F5B84D;
+    --color-success: #4CC272; --color-warning: #F5A623; --color-danger: #F0655A;
+    --color-bg: #121513; --color-surface: #1C201D; --color-ink: #E8ECE9;
+    --color-ink-muted: #98A29C; --color-border: #2B302D;
+  }
+
+  * { box-sizing: border-box; margin: 0; }
+  body { background: #DDE1DE; font-family: var(--font-ui); color: var(--color-ink); padding: 24px; }
+  .mono { font-family: var(--font-money); font-variant-numeric: tabular-nums; }
+  svg.ic { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.75;
+    stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  svg.ic.sm { width: 20px; height: 20px; }
+
+  .canvas-label { max-width: 1280px; margin: 32px auto 8px; font-size: 14px; color: #444; }
+  .canvas { width: 1280px; height: 800px; margin: 0 auto; background: var(--color-bg);
+    border-radius: 4px; overflow: hidden; display: flex; flex-direction: column; box-shadow: var(--shadow-overlay); }
+  .note { max-width: 1280px; margin: 8px auto 0; font-size: 13px; color: #555; }
+
+  .topbar { height: 56px; background: var(--color-surface); border-bottom: 1px solid var(--color-border);
+    display: flex; align-items: center; gap: 16px; padding: 0 16px; flex: none; }
+  .back { height: 44px; padding: 0 14px; border: 1px solid var(--color-border); border-radius: var(--radius);
+    background: var(--color-surface); font-size: 16px; font-family: var(--font-ui); color: var(--color-ink);
+    display: flex; align-items: center; gap: 6px; }
+  .title { font-size: 18px; font-weight: 600; }
+  .sync-pill { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 14px;
+    padding: 8px 14px; border-radius: 999px; font-weight: 500; }
+  .sync-pill .dot { width: 10px; height: 10px; border-radius: 999px; }
+  .sync-ok { background: #E7F3EA; color: var(--color-success); }
+  .sync-ok .dot { background: var(--color-success); }
+  .sync-warn { background: #FDF3E3; color: #9A6200; }
+  .sync-warn .dot { background: var(--color-warning); }
+
+  .main { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 24px; align-content: start; }
+
+  .card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card); padding: 20px 24px; }
+  .card h2 { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; display: flex; align-items: center; gap: 10px; }
+  .card h2 svg.ic { color: var(--color-ink-muted); }
+  .card .sub { font-size: 13px; color: var(--color-ink-muted); margin: 2px 0 12px 34px; }
+  .stpill { margin-left: auto; font-size: 13px; font-weight: 500; border-radius: 999px; padding: 3px 12px; }
+  .st-ok { color: var(--color-success); background: #E7F3EA; }
+  .st-bad { color: var(--color-danger); background: #FCEBEA; }
+  .st-warn { color: #9A6200; background: #FDF3E3; }
+
+  .kv { font-size: 15px; }
+  .kv .row { display: flex; justify-content: space-between; gap: 16px; padding: 7px 0; border-bottom: 1px solid var(--color-border); }
+  .kv .row:last-child { border-bottom: 0; }
+  .kv .k { color: var(--color-ink-muted); }
+  .kv .v { font-weight: 500; text-align: right; }
+  .kv .v.mono { font-weight: 400; font-size: 14px; }
+
+  .btnrow { display: flex; gap: 10px; margin-top: 16px; }
+  .btn { height: 52px; padding: 0 20px; border: 1px solid var(--color-border); border-radius: var(--radius);
+    background: var(--color-surface); font-size: 16px; font-family: var(--font-ui); color: var(--color-ink);
+    display: flex; align-items: center; gap: 8px; }
+  .btn.primary { border: 0; background: var(--color-primary); color: #fff; font-weight: 600; }
+  .btn.danger { border: 1px solid #F3C1BD; color: var(--color-danger); }
+
+  .dangerzone { grid-column: 1 / -1; border: 1px solid #F3C1BD; }
+  .dangerzone h2 { color: var(--color-danger); }
+  .dangerzone h2 svg.ic { color: var(--color-danger); }
+  .dz { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-top: 8px; }
+  .dz .txt { font-size: 14px; color: var(--color-ink-muted); line-height: 1.5; max-width: 760px; }
+
+  .errbox { border: 1px solid #F3C1BD; background: #FCEBEA; border-radius: var(--radius);
+    padding: 12px 14px; font-size: 14px; color: #8C1D14; line-height: 1.5; margin-top: 12px; }
+  .warnbox { border: 1px solid #F2DDB4; background: #FDF3E3; border-radius: var(--radius);
+    padding: 12px 14px; font-size: 14px; color: #7A4E00; line-height: 1.5; margin-top: 12px; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     SECTION 1 — Primary state: everything healthy
+     Canvas: POS desktop/tablet landscape 1280×800
+============================================================ -->
+<p class="canvas-label"><strong>POS-12 Settings/diagnostics — primary state</strong> (printer connected · sync healthy · register signed in)</p>
+<div class="canvas">
+  <div class="topbar">
+    <button class="back"><svg class="ic sm" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>Sell</button>
+    <div class="title">Settings &amp; diagnostics — Register 2</div>
+    <div class="sync-pill sync-ok"><span class="dot"></span>Synced · just now</div>
+  </div>
+  <div class="main">
+    <div class="card">
+      <h2><svg class="ic" viewBox="0 0 24 24"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Receipt printer<span class="stpill st-ok">Connected</span></h2>
+      <div class="sub">ESC/POS via USB</div>
+      <div class="kv">
+        <div class="row"><span class="k">Printer</span><span class="v">XPrinter XP-58IIH</span></div>
+        <div class="row"><span class="k">Paper width</span><span class="v">58 mm</span></div>
+        <div class="row"><span class="k">Cash drawer kick</span><span class="v">On (pin 2)</span></div>
+        <div class="row"><span class="k">Last print</span><span class="v">14:26 — R2-000483</span></div>
+      </div>
+      <div class="btnrow">
+        <button class="btn primary">Print test receipt</button>
+        <button class="btn">Change printer…</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2><svg class="ic" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 21H3v-5"/></svg>Sync health<span class="stpill st-ok">Healthy</span></h2>
+      <div class="sub">Local queue → RetailOS cloud</div>
+      <div class="kv">
+        <div class="row"><span class="k">Pending in outbox</span><span class="v">0 facts</span></div>
+        <div class="row"><span class="k">Last push</span><span class="v">14:26 (batch 01J8ZQ5C · 2 facts)</span></div>
+        <div class="row"><span class="k">Last catalog pull</span><span class="v">14:20 · rev 1,482</span></div>
+        <div class="row"><span class="k">Local orders stored</span><span class="v">1,214 (60-day window)</span></div>
+      </div>
+      <div class="btnrow">
+        <button class="btn primary">Sync now</button>
+        <button class="btn">View sync log</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2><svg class="ic" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>This register</h2>
+      <div class="sub">Device binding &amp; version</div>
+      <div class="kv">
+        <div class="row"><span class="k">Store / register</span><span class="v">Bahay Kubo Grocers · Register 2, Poblacion</span></div>
+        <div class="row"><span class="k">App</span><span class="v mono">pos-desktop 1.2.0 (auto-update on)</span></div>
+        <div class="row"><span class="k">Device ID</span><span class="v mono">01J8Z-DEV-K7RM</span></div>
+        <div class="row"><span class="k">Activated</span><span class="v">02 Jul 2026 by Jun d.C.</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>Language &amp; display</h2>
+      <div class="sub">Register-level preferences</div>
+      <div class="kv">
+        <div class="row"><span class="k">Language</span><span class="v">English (Filipino coming later)</span></div>
+        <div class="row"><span class="k">Theme</span><span class="v">Light · auto-dark for night shift</span></div>
+        <div class="row"><span class="k">Auto-lock after</span><span class="v">2 minutes idle</span></div>
+      </div>
+    </div>
+    <div class="card dangerzone">
+      <h2><svg class="ic" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Sign out this register</h2>
+      <div class="dz">
+        <div class="txt">Unbinds the device and deletes the local catalog and queued data. Requires Owner PIN, blocked while sales are unsynced. Re-activation needs a new code from Admin.</div>
+        <button class="btn danger">Sign out register…</button>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="note">Diagnostics a cashier can read to a support person over the phone: printer, queue depth, last-push time, catalog rev, app version. Card headers now carry muted Lucide icons with status as a right-aligned pill — scannable at arm's length. "Sync now" is reassurance-ware (the pusher already retries) but gives an anxious owner a button. Sign-out is the only destructive act: Owner PIN + type-to-confirm, and it refuses to run with a non-empty outbox — you can't destroy unsynced sales.</p>
+
+<!-- ============================================================
+     SECTION 2 — Non-happy states: printer lost + sync stalled
+============================================================ -->
+<p class="canvas-label"><strong>POS-12 Settings/diagnostics — degraded state</strong> (printer unreachable · outbox backing up for 2h)</p>
+<div class="canvas">
+  <div class="topbar">
+    <button class="back"><svg class="ic sm" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>Sell</button>
+    <div class="title">Settings &amp; diagnostics — Register 2</div>
+    <div class="sync-pill sync-warn"><span class="dot"></span>Offline · 14 sales queued</div>
+  </div>
+  <div class="main">
+    <div class="card">
+      <h2><svg class="ic" viewBox="0 0 24 24"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Receipt printer<span class="stpill st-bad">Not found</span></h2>
+      <div class="sub">ESC/POS via USB</div>
+      <div class="kv">
+        <div class="row"><span class="k">Printer</span><span class="v">XPrinter XP-58IIH</span></div>
+        <div class="row"><span class="k">Last seen</span><span class="v">18:02 (12 min ago)</span></div>
+        <div class="row"><span class="k">Last print</span><span class="v">18:01 — R2-000508</span></div>
+      </div>
+      <div class="errbox">Check the USB cable and printer power, then retry. Sales keep working — receipts queue for reprint, and email/QR receipts still send.</div>
+      <div class="btnrow">
+        <button class="btn primary">Retry connection</button>
+        <button class="btn">Change printer…</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2><svg class="ic" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 21H3v-5"/></svg>Sync health<span class="stpill st-warn">Backing up</span></h2>
+      <div class="sub">Local queue → RetailOS cloud</div>
+      <div class="kv">
+        <div class="row"><span class="k">Pending in outbox</span><span class="v">31 facts (14 sales)</span></div>
+        <div class="row"><span class="k">Last successful push</span><span class="v">16:12 (2 h 8 min ago)</span></div>
+        <div class="row"><span class="k">Retrying</span><span class="v">every 60 s · next in 24 s</span></div>
+        <div class="row"><span class="k">Catalog age</span><span class="v">2 h — fresh</span></div>
+      </div>
+      <div class="warnbox">No connection to RetailOS cloud since 16:12. Sales are safe on this device and push automatically when the internet returns. Nothing to do unless this lasts past tomorrow.</div>
+      <div class="btnrow">
+        <button class="btn primary">Sync now</button>
+        <button class="btn">View sync log</button>
+      </div>
+    </div>
+    <div class="card" style="grid-column: 1 / -1;">
+      <h2><svg class="ic" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>This register</h2>
+      <div class="kv" style="margin-top: 10px">
+        <div class="row"><span class="k">Store / register</span><span class="v">Bahay Kubo Grocers · Register 2, Poblacion</span></div>
+        <div class="row"><span class="k">App</span><span class="v mono">pos-desktop 1.2.0 · update 1.2.1 downloaded, installs on next launch</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="note">Two independent failures, each with its own calm remedy — neither blocks selling (offline-first golden rule; printer failure degrades to email/QR + queued reprints). The sync card quantifies the queue in cashier terms ("14 sales"), states the retry cadence, and says when to worry (catalog staleness banner appears at 24 h per offline-sync-strategy). Auto-update stages quietly; it never restarts mid-shift.</p>
+
+</body>
+</html>

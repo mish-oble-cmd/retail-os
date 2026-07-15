@@ -8,17 +8,31 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src",
-    "test": "echo 'no tests yet'"
+    "lint": "eslint src test",
+    "test": "vitest run"
   },
   "devDependencies": {
-    "@retailos/config": "workspace:*",
     "@eslint/js": "^9.18.0",
+    "@retailos/config": "workspace:*",
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/sql.js": "^1.4.11",
+    "better-sqlite3": "^11.8.1",
     "eslint": "^9.18.0",
     "typescript": "^5.7.3",
-    "typescript-eslint": "^8.20.0"
+    "typescript-eslint": "^8.20.0",
+    "vitest": "^2.1.8"
   },
   "dependencies": {
-    "@retailos/domain": "workspace:*"
+    "@retailos/domain": "workspace:*",
+    "sql.js": "^1.14.1",
+    "ulid": "^2.3.0"
+  },
+  "peerDependencies": {
+    "better-sqlite3": "^11.8.1"
+  },
+  "peerDependenciesMeta": {
+    "better-sqlite3": {
+      "optional": true
+    }
   }
 }

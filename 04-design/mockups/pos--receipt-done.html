@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>POS-05 Receipt/Done — RetailOS mockup</title>
+<style>
+  /* ===== Counter design tokens — keep in sync with 04-design/design-system.md ===== */
+  :root {
+    --color-primary: #1A4D2E;
+    --color-primary-hover: #143D24;
+    --color-accent: #F5A623;
+    --color-success: #1E8E3E;
+    --color-warning: #F29900;
+    --color-danger: #D93025;
+    --color-bg: #F7F8F7;
+    --color-surface: #FFFFFF;
+    --color-ink: #1C1F1D;
+    --color-ink-muted: #5C6660;
+    --color-border: #E2E6E3;
+    --radius: 8px;
+    --radius-card: 12px;
+    --shadow-card: 0 1px 3px rgba(28, 31, 29, 0.10);
+    --shadow-overlay: 0 8px 24px rgba(28, 31, 29, 0.18);
+    --font-ui: "Inter", system-ui, -apple-system, sans-serif;
+    --font-money: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  }
+  [data-theme="dark"] {
+    --color-primary: #5CB584; --color-primary-hover: #6FC494; --color-accent: #F5B84D;
+    --color-success: #4CC272; --color-warning: #F5A623; --color-danger: #F0655A;
+    --color-bg: #121513; --color-surface: #1C201D; --color-ink: #E8ECE9;
+    --color-ink-muted: #98A29C; --color-border: #2B302D;
+  }
+
+  * { box-sizing: border-box; margin: 0; }
+  body { background: #DDE1DE; font-family: var(--font-ui); color: var(--color-ink); padding: 24px; }
+  .money { font-family: var(--font-money); font-variant-numeric: tabular-nums; }
+  svg.ic { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.75;
+    stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  svg.ic.sm { width: 20px; height: 20px; }
+
+  .canvas-label { max-width: 1280px; margin: 32px auto 8px; font-size: 14px; color: #444; }
+  .canvas { width: 1280px; height: 800px; margin: 0 auto; background: var(--color-bg);
+    border-radius: 4px; overflow: hidden; display: flex; flex-direction: column;
+    box-shadow: var(--shadow-overlay); }
+  .note { max-width: 1280px; margin: 8px auto 0; font-size: 13px; color: #555; }
+
+  .topbar { height: 56px; background: var(--color-surface); border-bottom: 1px solid var(--color-border);
+    display: flex; align-items: center; gap: 16px; padding: 0 16px; flex: none; }
+  .store-id { font-size: 18px; font-weight: 600; }
+  .store-id small { display: block; font-size: 12px; color: var(--color-ink-muted); font-weight: 400; }
+  .sync-pill { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 14px;
+    padding: 8px 14px; border-radius: 999px; font-weight: 500; }
+  .sync-pill .dot { width: 10px; height: 10px; border-radius: 999px; }
+  .sync-ok { background: #E7F3EA; color: var(--color-success); }
+  .sync-ok .dot { background: var(--color-success); }
+  .sync-off { background: #FDF3E3; color: #9A6200; }
+  .sync-off .dot { background: var(--color-warning); }
+  .staff-chip { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500;
+    padding: 6px 12px 6px 6px; border: 1px solid var(--color-border); border-radius: 999px; background: var(--color-surface); }
+  .avatar { width: 32px; height: 32px; border-radius: 999px; background: var(--color-primary); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; }
+
+  .main { flex: 1; display: flex; align-items: center; justify-content: center; gap: 64px; }
+
+  .done-col { width: 460px; text-align: center; }
+  .paid-badge { display: inline-flex; align-items: center; gap: 10px; background: #E7F3EA; color: var(--color-success);
+    font-size: 18px; font-weight: 600; border-radius: 999px; padding: 10px 20px; margin-bottom: 20px; }
+  .order-no { font-size: 14px; color: var(--color-ink-muted); margin-bottom: 28px; }
+  .change-label { font-size: 20px; color: var(--color-ink-muted); }
+  .change { font-size: 64px; font-weight: 600; margin: 4px 0 32px; letter-spacing: -0.01em; }
+  .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .act { height: 64px; border: 1px solid var(--color-border); border-radius: var(--radius-card);
+    background: var(--color-surface); font-family: var(--font-ui); font-size: 18px; font-weight: 500;
+    color: var(--color-ink); box-shadow: var(--shadow-card); display: flex; align-items: center;
+    justify-content: center; gap: 10px; }
+  .act .st { font-size: 13px; color: var(--color-success); font-weight: 500; }
+  .act .st.warn { color: #9A6200; }
+  .new-sale { width: 100%; height: 64px; border: 0; border-radius: var(--radius-card);
+    background: var(--color-primary); color: #fff; font-size: 22px; font-weight: 600; font-family: var(--font-ui); }
+  .new-sale:hover { background: var(--color-primary-hover); }
+  .auto { margin-top: 10px; font-size: 14px; color: var(--color-ink-muted); }
+
+  /* Receipt preview */
+  .receipt { width: 300px; background: var(--color-surface); border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-card); padding: 20px 18px; font-family: var(--font-money); font-size: 12.5px;
+    line-height: 1.55; color: var(--color-ink); }
+  .receipt .c { text-align: center; }
+  .receipt .b { font-weight: 700; }
+  .receipt hr { border: 0; border-top: 1px dashed var(--color-border); margin: 8px 0; }
+  .receipt .row { display: flex; justify-content: space-between; gap: 8px; }
+  .receipt .row span:last-child { font-variant-numeric: tabular-nums; }
+  .receipt .qr { width: 92px; height: 92px; margin: 10px auto 4px; background:
+    repeating-conic-gradient(var(--color-ink) 0% 25%, var(--color-surface) 0% 50%) 0 0/14px 14px;
+    outline: 6px solid var(--color-surface); }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     SECTION 1 — Primary state: cash sale done, change due
+     Canvas: POS desktop/tablet landscape 1280×800
+============================================================ -->
+<p class="canvas-label"><strong>POS-05 Receipt/Done — primary state</strong> (online · cash ₱1,500 on ₱1,250 · receipt printed, email sent)</p>
+<div class="canvas">
+  <div class="topbar">
+    <div class="store-id">Bahay Kubo Grocers<small>Register 2 · Poblacion branch</small></div>
+    <div class="sync-pill sync-ok"><span class="dot"></span>Synced · just now</div>
+    <div class="staff-chip"><span class="avatar">MR</span>Marites R.</div>
+  </div>
+  <div class="main">
+    <div class="done-col">
+      <div class="paid-badge"><svg class="ic sm" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Paid · Cash ₱1,500.00</div>
+      <div class="order-no">Order R2-000482 · 09 Jul 2026, 14:21 · Marites R.</div>
+      <div class="change-label">Change due</div>
+      <div class="change money">₱250.00</div>
+      <div class="actions">
+        <button class="act"><svg class="ic sm" viewBox="0 0 24 24"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Print again</button>
+        <button class="act"><svg class="ic sm" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>Email <span class="st">Sent ✓</span></button>
+        <button class="act"><svg class="ic sm" viewBox="0 0 24 24"><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/><rect x="3" y="16" width="5" height="5" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h1"/><path d="M21 12v.01"/><path d="M12 21v-1"/></svg>QR receipt</button>
+        <button class="act"><svg class="ic sm" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/></svg>Gift receipt</button>
+      </div>
+      <button class="new-sale">New sale</button>
+      <div class="auto">Returning to Sell in 8 s — tap anywhere to stay</div>
+    </div>
+    <div class="receipt">
+      <div class="c b">BAHAY KUBO GROCERS</div>
+      <div class="c">Poblacion branch · Register 2</div>
+      <div class="c">VAT REG TIN 123-456-789-000</div>
+      <hr />
+      <div class="row"><span>R2-000482</span><span>09 Jul 26 14:21</span></div>
+      <div class="row"><span>Cashier</span><span>Marites R.</span></div>
+      <hr />
+      <div class="row"><span>Dried Mangoes 200g ×2</span><span>370.00</span></div>
+      <div class="row"><span>Barako Coffee 250g ×1</span><span>320.00</span></div>
+      <div class="row"><span>Banana Chips 100g ×3</span><span>195.00</span></div>
+      <div class="row"><span>Calamansi Conc. 500ml ×1</span><span>145.00</span></div>
+      <div class="row"><span>Coco Sugar 500g ×1</span><span>220.00</span></div>
+      <hr />
+      <div class="row b"><span>TOTAL</span><span>1,250.00</span></div>
+      <div class="row"><span>Cash</span><span>1,500.00</span></div>
+      <div class="row"><span>Change</span><span>250.00</span></div>
+      <hr />
+      <div class="row"><span>VATable sales</span><span>1,116.07</span></div>
+      <div class="row"><span>VAT 12%</span><span>133.93</span></div>
+      <div class="qr"></div>
+      <div class="c">Scan for your e-receipt</div>
+      <div class="c">Salamat po! · retailos.app/r/01J8ZQ4A</div>
+    </div>
+  </div>
+</div>
+<p class="note">Change due is the 64px hero — it's the one number the cashier reads aloud. Print fired automatically on payment (this screen offers re-print); email state is inline on the button, not a toast. Auto-return timer keeps lines moving but any tap cancels it. Receipt preview shows the BIR-style VAT breakdown (₱1,250.00 gross @ 1200 bp inclusive → VAT ₱133.93, VATable ₱1,116.07) and the QR link to <code>/r/&lt;order-ulid&gt;</code>.</p>
+
+<!-- ============================================================
+     SECTION 2 — Non-happy states: offline + printer not found
+============================================================ -->
+<p class="canvas-label"><strong>POS-05 Receipt/Done — error states</strong> (offline · email queued · printer unreachable)</p>
+<div class="canvas">
+  <div class="topbar">
+    <div class="store-id">Bahay Kubo Grocers<small>Register 2 · Poblacion branch</small></div>
+    <div class="sync-pill sync-off"><span class="dot"></span>Offline · 4 sales queued</div>
+    <div class="staff-chip"><span class="avatar">MR</span>Marites R.</div>
+  </div>
+  <div class="main">
+    <div class="done-col">
+      <div class="paid-badge"><svg class="ic sm" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Paid · Cash ₱1,500.00</div>
+      <div class="order-no">Order R2-000483 · 09 Jul 2026, 14:26 · Marites R. · sync pending</div>
+      <div class="change-label">Change due</div>
+      <div class="change money">₱250.00</div>
+      <div class="actions">
+        <button class="act" style="border-color:#F3C1BD; color:var(--color-danger)"><svg class="ic sm" viewBox="0 0 24 24"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Printer not found — Retry</button>
+        <button class="act"><svg class="ic sm" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>Email <span class="st warn">Queued — sends when online</span></button>
+        <button class="act"><svg class="ic sm" viewBox="0 0 24 24"><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/><rect x="3" y="16" width="5" height="5" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h1"/><path d="M21 12v.01"/><path d="M12 21v-1"/></svg>QR receipt</button>
+        <button class="act"><svg class="ic sm" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/></svg>Gift receipt</button>
+      </div>
+      <button class="new-sale">New sale</button>
+      <div class="auto">Auto-return paused while the printer needs attention · Printer setup is in Settings</div>
+    </div>
+    <div class="receipt" style="opacity:.55">
+      <div class="c b">BAHAY KUBO GROCERS</div>
+      <div class="c">Poblacion branch · Register 2</div>
+      <hr />
+      <div class="row"><span>R2-000483</span><span>09 Jul 26 14:26</span></div>
+      <div class="row b"><span>TOTAL</span><span>1,250.00</span></div>
+      <div class="row"><span>Cash</span><span>1,500.00</span></div>
+      <div class="row"><span>Change</span><span>250.00</span></div>
+      <hr />
+      <div class="c">— waiting for printer —</div>
+    </div>
+  </div>
+</div>
+<p class="note">The sale itself is already safe (paid badge unchanged; order queued in the outbox — "sync pending" on the order line, not an alarm). Printer failure is the only danger-styled element and pauses the auto-return so the screen can't vanish mid-problem; Retry is on the failing button itself, deeper fixes point to POS-12 Settings. Offline email degrades to a queued state — nothing is lost, wording says when it will send.</p>
+
+</body>
+</html>

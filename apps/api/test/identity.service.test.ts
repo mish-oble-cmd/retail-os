@@ -4,9 +4,11 @@
  * needed in unit-level tests.
  */
 import { authenticator } from 'otplib';
+import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { DbService } from '../src/db/db.service';
 import { IdentityService } from '../src/modules/identity/identity.service';
+import { roles } from '../src/db/schema';
 import { createTestDb } from './pglite';
 
 let db: Awaited<ReturnType<typeof createTestDb>>;
@@ -25,6 +27,7 @@ afterAll(async () => {
 const signupInput = {
   email: 'aling.nena@example.ph',
   password: 'kape-barako-1250',
+  name: 'Aling Nena',
   storeName: 'Bahay Kubo Grocers',
   currency: 'PHP',
 };
@@ -82,5 +85,20 @@ describe('identity service', () => {
       authenticator.generate(enrollment.secret),
     );
     expect(withCode.staffId).toBe(session.staffId);
+  });
+
+  it('signup seeds the fixed Cashier role (1F)', async () => {
+    const identity_result = await identity.signup({
+      email: 'cashier-seed@example.test',
+      password: 'a-long-password',
+      name: 'Seed Owner',
+      storeName: 'Seed Store',
+      currency: 'SGD',
+    });
+    const rows = await db.tenants
+      .forStore(identity_result.storeId)
+      .tx((tx) => tx.select().from(roles).where(eq(roles.name, 'Cashier')));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.permissions).toEqual({ cashier: true, max_discount_pct: 10 });
   });
 });

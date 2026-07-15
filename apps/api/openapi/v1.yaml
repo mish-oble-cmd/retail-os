@@ -65,6 +65,503 @@ paths:
           description: ""
       summary: Confirm the authenticator code to turn 2FA on
       tags: *a1
+  /api/v1/staff:
+    get:
+      operationId: listStaff
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      summary: All staff with role + PIN status
+      tags: &a2
+        - staff
+    post:
+      operationId: createStaff
+      parameters: []
+      responses:
+        "201":
+          description: ""
+      summary: Add a staff member
+      tags: *a2
+  /api/v1/staff/{id}:
+    patch:
+      operationId: updateStaff
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      summary: Rename, change role, or (de)activate
+      tags: *a2
+  /api/v1/staff/{id}/pin:
+    post:
+      operationId: setStaffPin
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "201":
+          description: ""
+      summary: Set or reset a register PIN
+      tags: *a2
+  /api/v1/roles:
+    get:
+      operationId: listRoles
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      summary: Fixed Phase 1 roles (Owner, Cashier)
+      tags:
+        - staff
+  /api/v1/categories:
+    get:
+      operationId: listCategories
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      summary: All categories, sort-ordered (client builds the tree)
+      tags: &a3
+        - catalog
+    post:
+      operationId: createCategory
+      parameters: []
+      responses:
+        "201":
+          description: ""
+      summary: Create a category
+      tags: *a3
+  /api/v1/categories/{id}:
+    patch:
+      operationId: updateCategory
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      summary: Rename, re-sort, or re-parent a category
+      tags: *a3
+    delete:
+      operationId: deleteCategory
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "204":
+          description: ""
+      summary: Delete an empty category
+      tags: *a3
+  /api/v1/products/import:
+    post:
+      operationId: importProducts
+      parameters: []
+      responses:
+        "201":
+          description: ""
+      summary: "CSV import, Phase 1 subset: fixed template, create-only; valid rows
+        import, invalid rows return with row + reason"
+      tags: &a4
+        - catalog
+  /api/v1/products/export:
+    get:
+      operationId: exportProducts
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      summary: All non-archived products as CSV in the import template (re-imports
+        cleanly)
+      tags: *a4
+  /api/v1/products:
+    get:
+      operationId: listProducts
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      summary: Paginated products with variant/stock rollups; search matches name,
+        SKU, or exact barcode. Archived products appear only with
+        status=archived.
+      tags: *a4
+    post:
+      operationId: createProduct
+      parameters: []
+      responses:
+        "201":
+          description: ""
+      summary: Create a product with its options matrix, variants, barcodes, and
+        opening stock
+      tags: *a4
+  /api/v1/products/{id}:
+    get:
+      operationId: getProduct
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      summary: Product with variants, barcodes, and on-hand
+      tags: *a4
+    patch:
+      operationId: updateProduct
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      summary: Update product-level fields (variants via /variants)
+      tags: *a4
+    delete:
+      operationId: archiveProduct
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "204":
+          description: ""
+      summary: Archive a product (soft delete — sale history references variants
+        forever)
+      tags: *a4
+  /api/v1/products/{id}/variants:
+    post:
+      operationId: addVariant
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "201":
+          description: ""
+      summary: Add a variant to an existing product
+      tags: *a4
+  /api/v1/variants/{id}:
+    get:
+      operationId: getVariant
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      summary: Variant with barcodes and on-hand
+      tags: &a5
+        - catalog
+    patch:
+      operationId: updateVariant
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      summary: Update variant pricing/SKU/tracking; `barcodes` replaces the whole set
+      tags: *a5
+    delete:
+      operationId: deleteVariant
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "204":
+          description: ""
+      summary: Delete a variant with no stock history (409 otherwise — the ledger
+        references it forever)
+      tags: *a5
+  /api/v1/uploads/product-image:
+    post:
+      operationId: presignProductImageUpload
+      parameters: []
+      responses:
+        "201":
+          description: ""
+      summary: Presigned PUT for a product image; persist the returned public_url via
+        PATCH /products/{id} images
+      tags:
+        - catalog
+  /api/v1/tax-categories:
+    get:
+      operationId: listTaxCategories
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      summary: Tax categories for pickers
+      tags:
+        - catalog
+  /api/v1/public/receipts/{orderId}:
+    get:
+      operationId: ReceiptController_get
+      parameters:
+        - name: orderId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      tags: &a6
+        - Receipt
+  /api/v1/public/receipts/{orderId}/email:
+    post:
+      operationId: ReceiptController_email
+      parameters:
+        - name: orderId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "201":
+          description: ""
+      tags: *a6
+  /api/v1/shifts:
+    get:
+      operationId: listShifts
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      summary: Shifts newest-first with over/short + gross
+      tags: &a7
+        - shifts
+  /api/v1/shifts/{id}:
+    get:
+      operationId: getShift
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      summary: Shift detail with Z snapshot + cash movements
+      tags: *a7
+  /api/v1/sync/activate:
+    post:
+      operationId: activateDevice
+      parameters: []
+      responses:
+        "201":
+          description: ""
+      summary: Exchange a one-time activation code for a device token (shown once)
+      tags: &a8
+        - sync
+  /api/v1/sync/bootstrap:
+    get:
+      operationId: syncBootstrap
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      summary: Full snapshot for a freshly activated register (device token)
+      tags: *a8
+  /api/v1/sync/changes:
+    get:
+      operationId: syncChanges
+      parameters:
+        - name: limit
+          required: false
+          in: query
+          schema:
+            type: number
+        - name: since
+          required: false
+          in: query
+          schema:
+            type: number
+      responses:
+        "200":
+          description: ""
+      summary: Delta feed above a sync_rev cursor, tombstones included (device token)
+      tags: *a8
+  /api/v1/sync/batches:
+    post:
+      operationId: syncBatches
+      parameters: []
+      responses:
+        "201":
+          description: ""
+      summary: Ingest a batch of POS facts; idempotent by batch id and fact ULID
+        (device token)
+      tags: *a8
+  /api/v1/locations:
+    get:
+      operationId: listLocations
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      summary: All locations
+      tags: &a9
+        - settings
+    post:
+      operationId: createLocation
+      parameters: []
+      responses:
+        "201":
+          description: ""
+      summary: Create a location
+      tags: *a9
+  /api/v1/locations/{id}:
+    patch:
+      operationId: updateLocation
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      summary: Update or deactivate a location
+      tags: *a9
+  /api/v1/registers:
+    get:
+      operationId: listRegisters
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      summary: All registers with grid layout and pending-activation state
+      tags: &a10
+        - settings
+    post:
+      operationId: createRegister
+      parameters: []
+      responses:
+        "201":
+          description: ""
+      summary: Create a register at a location
+      tags: *a10
+  /api/v1/registers/{id}:
+    patch:
+      operationId: updateRegister
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+      summary: Rename, (de)activate, or save the POS grid layout (ADM-16 designer)
+      tags: *a10
+  /api/v1/registers/{id}/activation-codes:
+    post:
+      operationId: issueActivationCode
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "201":
+          description: ""
+      summary: Issue a one-time activation code (8-char, 24 h TTL); shown once,
+        revokes any pending code
+      tags: *a10
+    delete:
+      operationId: revokeActivationCode
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "204":
+          description: ""
+      summary: Revoke the pending activation code
+      tags: *a10
+  /api/v1/settings/store:
+    patch:
+      operationId: updateStore
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      summary: Update the store profile (name, currency, timezone, tax mode)
+      tags:
+        - settings
+  /api/v1/onboarding/status:
+    get:
+      operationId: getOnboardingStatus
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      summary: First-sale checklist status
+      tags: &a11
+        - onboarding
+  /api/v1/onboarding/sample-catalog:
+    post:
+      operationId: loadSampleCatalog
+      parameters: []
+      responses:
+        "201":
+          description: ""
+      summary: Load the sample catalog
+      tags: *a11
+    delete:
+      operationId: purgeSampleCatalog
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      summary: Delete the sample catalog
+      tags: *a11
+  /api/v1/onboarding/dismiss:
+    post:
+      operationId: dismissOnboarding
+      parameters: []
+      responses:
+        "204":
+          description: ""
+      summary: Hide the first-sale checklist
+      tags: *a11
 info:
   title: RetailOS API
   description: REST API per 03-architecture/api-design.md. Internal clients are

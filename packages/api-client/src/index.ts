@@ -60,8 +60,21 @@ export function createApiClient(options: ApiClientOptions) {
     return (await response.json()) as T;
   }
 
+  /** Non-JSON GET (CSV export, receipts). */
+  async function getText(path: ApiPath): Promise<string> {
+    const response = await fetchImpl(`${baseUrl}${path}`, { credentials: 'include' });
+    if (!response.ok) {
+      const problem = (await response.json().catch(() => null)) as ProblemJson | null;
+      throw new ApiError(
+        problem ?? { type: 'about:blank', title: response.statusText, status: response.status },
+      );
+    }
+    return response.text();
+  }
+
   return {
     get: <T>(path: ApiPath) => request<T>('GET', path),
+    getText,
     post: <T>(path: ApiPath, body?: unknown) => request<T>('POST', path, body),
     patch: <T>(path: ApiPath, body?: unknown) => request<T>('PATCH', path, body),
     delete: <T>(path: ApiPath) => request<T>('DELETE', path),

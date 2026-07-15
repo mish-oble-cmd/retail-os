@@ -12,3 +12,14 @@
     user-select: none;
   }
 }
+
+/* POS-05: the native print dialog prints only the receipt slip. */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .print-receipt {
+    width: 100% !important;
+    border: 0 !important;
+  }
+}

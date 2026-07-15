@@ -33,6 +33,12 @@ export class TenantContext<Tx extends TxLike> {
   /** Run `fn` with RLS scoped to this store. */
   async tx<T>(fn: (tx: Tx) => Promise<T>): Promise<T> {
     return this.db.transaction(async (tx) => {
+      // SET LOCAL ROLE first: RLS only binds non-superusers, and the dev
+      // DATABASE_URL connects as the bootstrap superuser. Without this drop,
+      // policies silently stop applying and reads leak across tenants (found
+      // live in 1A verification: a two-store dev DB returned the other
+      // store's currency). Tests do the same via the pglite harness.
+      await tx.execute(sql`SET LOCAL ROLE retailos_app`);
       // set_config(..., true) is transaction-local: no leakage across pooled connections.
       await tx.execute(sql`SELECT set_config('app.store_id', ${this.storeId}, true)`);
       return fn(tx);

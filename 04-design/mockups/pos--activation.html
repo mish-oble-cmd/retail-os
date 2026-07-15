@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>POS-01 Register activation — RetailOS mockup</title>
+<style>
+  /* ===== Counter design tokens — keep in sync with 04-design/design-system.md ===== */
+  :root {
+    --color-primary: #1A4D2E;
+    --color-primary-hover: #143D24;
+    --color-accent: #F5A623;
+    --color-success: #1E8E3E;
+    --color-warning: #F29900;
+    --color-danger: #D93025;
+    --color-bg: #F7F8F7;
+    --color-surface: #FFFFFF;
+    --color-ink: #1C1F1D;
+    --color-ink-muted: #5C6660;
+    --color-border: #E2E6E3;
+    --radius: 8px;
+    --radius-card: 12px;
+    --shadow-card: 0 1px 3px rgba(28, 31, 29, 0.10);
+    --shadow-overlay: 0 8px 24px rgba(28, 31, 29, 0.18);
+    --font-ui: "Inter", system-ui, -apple-system, sans-serif;
+    --font-money: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  }
+  [data-theme="dark"] {
+    --color-primary: #5CB584; --color-primary-hover: #6FC494; --color-accent: #F5B84D;
+    --color-success: #4CC272; --color-warning: #F5A623; --color-danger: #F0655A;
+    --color-bg: #121513; --color-surface: #1C201D; --color-ink: #E8ECE9;
+    --color-ink-muted: #98A29C; --color-border: #2B302D;
+  }
+
+  * { box-sizing: border-box; margin: 0; }
+  body { background: #DDE1DE; font-family: var(--font-ui); color: var(--color-ink); padding: 24px; }
+  svg.ic { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.75;
+    stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  svg.ic.sm { width: 20px; height: 20px; }
+
+  .canvas-label { max-width: 1280px; margin: 32px auto 8px; font-size: 14px; color: #444; }
+  .canvas { width: 1280px; height: 800px; margin: 0 auto; background: var(--color-bg);
+    border-radius: 4px; overflow: hidden; display: flex; flex-direction: column;
+    box-shadow: var(--shadow-overlay); }
+  .note { max-width: 1280px; margin: 8px auto 0; font-size: 13px; color: #555; }
+
+  .center { flex: 1; display: flex; align-items: center; justify-content: center; }
+  .wordmark { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
+  .wordmark .dot { color: var(--color-primary); }
+  .device-line { font-size: 14px; color: var(--color-ink-muted); }
+
+  .topbar { height: 56px; display: flex; align-items: center; justify-content: space-between;
+    padding: 0 24px; flex: none; }
+
+  .card { width: 520px; background: var(--color-surface); border: 1px solid var(--color-border);
+    border-radius: var(--radius-card); box-shadow: var(--shadow-card); padding: 40px; }
+  .card h1 { font-size: 24px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 8px; }
+  .card .sub { font-size: 16px; color: var(--color-ink-muted); line-height: 1.5; margin-bottom: 28px; }
+
+  .code-boxes { display: flex; gap: 10px; justify-content: center; margin-bottom: 8px; }
+  .code-boxes .gap { width: 18px; display: flex; align-items: center; justify-content: center;
+    color: var(--color-ink-muted); font-size: 24px; }
+  .code-char { width: 52px; height: 64px; border: 2px solid var(--color-border); border-radius: var(--radius);
+    background: var(--color-bg); display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-money); font-size: 28px; font-weight: 600; text-transform: uppercase; }
+  .code-char.filled { border-color: var(--color-primary); background: var(--color-surface); }
+  .code-char.cursor { border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(26, 77, 46, 0.15); }
+
+  .match { margin: 24px 0; border: 1px solid var(--color-border); border-radius: var(--radius);
+    background: var(--color-bg); padding: 16px; display: flex; gap: 14px; align-items: center; }
+  .match .icon { width: 44px; height: 44px; border-radius: var(--radius); background: #E7F3EA;
+    color: var(--color-success); display: flex; align-items: center; justify-content: center; font-size: 22px; flex: none; }
+  .match .store { font-size: 18px; font-weight: 600; }
+  .match .reg { font-size: 14px; color: var(--color-ink-muted); }
+
+  .btn-primary { width: 100%; height: 56px; border: 0; border-radius: var(--radius);
+    background: var(--color-primary); color: #fff; font-size: 18px; font-weight: 600; font-family: var(--font-ui); }
+  .btn-primary:hover { background: var(--color-primary-hover); }
+  .btn-primary[disabled] { opacity: .45; }
+  .help { margin-top: 20px; font-size: 14px; color: var(--color-ink-muted); text-align: center; line-height: 1.5; }
+
+  .error-box { margin: 24px 0; border: 1px solid #F3C1BD; border-radius: var(--radius);
+    background: #FCEBEA; padding: 16px; display: flex; gap: 12px; }
+  .error-box .icon { color: var(--color-danger); font-size: 20px; flex: none; }
+  .error-box .title { font-size: 16px; font-weight: 600; color: #8C1D14; }
+  .error-box .body { font-size: 14px; color: #8C1D14; line-height: 1.5; margin-top: 2px; }
+  .code-char.error { border-color: var(--color-danger); }
+
+  .net-banner { background: #FDF3E3; color: #7A4E00; font-size: 16px; padding: 10px 24px;
+    display: flex; gap: 10px; align-items: center; border-bottom: 1px solid #F2DDB4; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     SECTION 1 — Primary state: valid code entered, register matched
+     Canvas: POS desktop/tablet landscape 1280×800
+============================================================ -->
+<p class="canvas-label"><strong>POS-01 Register activation — primary state</strong> (valid code entered · store/register matched · awaiting confirmation)</p>
+<div class="canvas">
+  <div class="topbar">
+    <div class="wordmark">RetailOS<span class="dot">●</span></div>
+    <div class="device-line">This device: MacBook Air · pos-desktop 1.0.0</div>
+  </div>
+  <div class="center">
+    <div class="card">
+      <h1>Activate this register</h1>
+      <p class="sub">Enter the one-time activation code from Admin. It binds this device to a register and downloads the catalog.</p>
+      <div class="code-boxes">
+        <div class="code-char filled">K</div><div class="code-char filled">7</div><div class="code-char filled">R</div><div class="code-char filled">M</div>
+        <div class="gap">–</div>
+        <div class="code-char filled">3</div><div class="code-char filled">Q</div><div class="code-char filled">Z</div><div class="code-char filled">D</div>
+      </div>
+      <div class="match">
+        <div class="icon"><svg class="ic" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></div>
+        <div>
+          <div class="store">Bahay Kubo Grocers</div>
+          <div class="reg">Register 2 · Poblacion branch · code expires in 9 min</div>
+        </div>
+      </div>
+      <button class="btn-primary">Activate register &amp; download catalog</button>
+      <p class="help">Codes are generated in <strong>Admin → Settings → Locations &amp; registers</strong> and work once. Activating replaces any previous binding for Register 2.</p>
+    </div>
+  </div>
+</div>
+<p class="note">Code check happens on entry of the 8th character (no separate "verify" tap); the matched store/register is shown <em>before</em> the binding commits so the cashier can catch a wrong-register code. Primary action names its consequence. This screen requires network by nature — see the non-happy state below.</p>
+
+<!-- ============================================================
+     SECTION 2 — Non-happy states: expired code + no network
+============================================================ -->
+<p class="canvas-label"><strong>POS-01 Register activation — error states</strong> (expired code · device offline)</p>
+<div class="canvas">
+  <div class="topbar">
+    <div class="wordmark">RetailOS<span class="dot">●</span></div>
+    <div class="device-line">This device: MacBook Air · pos-desktop 1.0.0</div>
+  </div>
+  <div class="net-banner"><svg class="ic sm" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>No connection — activation needs the internet once. Selling works offline after this step.</div>
+  <div class="center">
+    <div class="card">
+      <h1>Activate this register</h1>
+      <p class="sub">Enter the one-time activation code from Admin. It binds this device to a register and downloads the catalog.</p>
+      <div class="code-boxes">
+        <div class="code-char error">V</div><div class="code-char error">2</div><div class="code-char error">P</div><div class="code-char error">A</div>
+        <div class="gap">–</div>
+        <div class="code-char error">8</div><div class="code-char error">H</div><div class="code-char error">T</div><div class="code-char error">N</div>
+      </div>
+      <div class="error-box">
+        <div class="icon"><svg class="ic sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg></div>
+        <div>
+          <div class="title">This code has expired</div>
+          <div class="body">Codes work once and expire after 15 minutes. Generate a new one in Admin → Settings → Locations &amp; registers, then try again.</div>
+        </div>
+      </div>
+      <button class="btn-primary" disabled>Activate register &amp; download catalog</button>
+      <p class="help">Wrong store? Each code is tied to one register — check which register the code was generated for.</p>
+    </div>
+  </div>
+</div>
+<p class="note">Two independent failure surfaces: the amber banner (offline — calm, explains that only activation needs network) and the expired-code error (danger, says exactly what to do next per design-system voice). Error text never blames the user.</p>
+
+</body>
+</html>

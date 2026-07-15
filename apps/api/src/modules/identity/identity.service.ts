@@ -1,17 +1,34 @@
+import { createHash, randomInt } from 'node:crypto';
 import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { and, eq } from 'drizzle-orm';
 import { authenticator } from 'otplib';
 import { ulid } from 'ulid';
+import { ARGON2_OPTIONS } from '../../common/hashing';
 import { DbService } from '../../db/db.service';
-import { roles, staff, stores } from '../../db/schema';
+import {
+  activationCodes,
+  locations,
+  registers,
+  roles,
+  staff,
+  stores,
+  taxCategories,
+  taxRates,
+} from '../../db/schema';
 
 export interface SignupInput {
   email: string;
   password: string;
+  name: string;
   storeName: string;
   currency: string;
 }
+
+/** Crockford base32 (no I, L, O, U) — matches the device-activation code alphabet. */
+const CODE_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+const CODE_LENGTH = 8;
+const CODE_TTL_MS = 24 * 60 * 60 * 1000;
 
 export interface Identity {
   staffId: string;
@@ -21,11 +38,14 @@ export interface Identity {
   roleName: string;
 }
 
-const ARGON2_OPTIONS: argon2.Options = {
-  type: argon2.argon2id,
-  memoryCost: 19_456, // 19 MiB — OWASP-recommended argon2id baseline
-  timeCost: 2,
-  parallelism: 1,
+/**
+ * Convenience default for the seeded "Standard" tax category; the onboarding
+ * wizard (FR-10.1) and ADM-17 let the owner change it. Rates stay fully
+ * per-store adjustable — this only picks a sensible starting point.
+ */
+const DEFAULT_TAX_BY_CURRENCY: Record<string, { name: string; rateBp: number }> = {
+  SGD: { name: 'GST 9%', rateBp: 900 },
+  PHP: { name: 'VAT 12%', rateBp: 1200 },
 };
 
 @Injectable()
@@ -65,15 +85,91 @@ export class IdentityService {
           name: 'Owner',
           permissions: { owner: true },
         });
+        // Fixed Phase 1 roles (FR-5.2): Cashier caps discounts at 10%; everything
+        // else needs Owner escalation at the register. Editor arrives Phase 2.
+        await tx.insert(roles).values({
+          id: ulid(),
+          storeId,
+          name: 'Cashier',
+          permissions: { cashier: true, max_discount_pct: 10 },
+        });
         await tx.insert(staff).values({
           id: staffId,
           storeId,
-          name: input.email.split('@')[0] ?? input.email,
+          name: (input.name ?? '').trim() || input.email.split('@')[0] || input.email,
           email: input.email,
           passwordHash,
           roleId,
         });
-        return { staffId, storeId, name: input.email, email: input.email, roleName: 'Owner' };
+        // Catalog needs a tax category to reference from the first product
+        // (products.tax_category_id NOT NULL); "Standard" + a currency-based
+        // starting rate, both editable in ADM-17.
+        const taxCategoryId = ulid();
+        const defaultRate = DEFAULT_TAX_BY_CURRENCY[input.currency] ?? {
+          name: 'No tax',
+          rateBp: 0,
+        };
+        await tx.insert(taxCategories).values({
+          id: taxCategoryId,
+          storeId,
+          name: 'Standard',
+        });
+        await tx.insert(taxRates).values({
+          id: ulid(),
+          storeId,
+          taxCategoryId,
+          name: defaultRate.name,
+          rateBp: defaultRate.rateBp,
+        });
+
+        // 1E (FR-10.1): provision the register loop in the same transaction so
+        // the onboarding checklist has a real activation code the instant signup
+        // returns. Only the sha-256 hash is stored; the plaintext is echoed into
+        // stores.settings.onboarding (owner-session readable) until the device
+        // activates, at which point GET /onboarding/status stops echoing it.
+        const locationId = ulid();
+        await tx.insert(locations).values({ id: locationId, storeId, name: 'Main' });
+        const registerId = ulid();
+        await tx.insert(registers).values({
+          id: registerId,
+          storeId,
+          locationId,
+          name: 'Register 1',
+          gridLayout: {},
+        });
+        const code = Array.from(
+          { length: CODE_LENGTH },
+          () => CODE_ALPHABET[randomInt(CODE_ALPHABET.length)],
+        ).join('');
+        const expiresAt = new Date(Date.now() + CODE_TTL_MS);
+        await tx.insert(activationCodes).values({
+          id: ulid(),
+          storeId,
+          registerId,
+          codeHash: createHash('sha256').update(code).digest('hex'),
+          expiresAt,
+          createdBy: staffId,
+        });
+        await tx
+          .update(stores)
+          .set({
+            settings: {
+              onboarding: {
+                activation_code: code,
+                activation_expires_at: expiresAt.toISOString(),
+                register_id: registerId,
+              },
+            },
+          })
+          .where(eq(stores.id, storeId));
+
+        return {
+          staffId,
+          storeId,
+          name: (input.name ?? '').trim() || input.email,
+          email: input.email,
+          roleName: 'Owner',
+        };
       },
     );
   }

@@ -1,0 +1,26 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "api",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-lc",
+        "cd apps/api && DATABASE_URL='postgres://retailos:retailos@localhost:5433/retailos' pnpm dev"
+      ],
+      "port": 3001
+    },
+    {
+      "name": "admin",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-lc", "cd apps/admin && pnpm dev"],
+      "port": 3000
+    },
+    {
+      "name": "pos-web",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-lc", "cd apps/pos-web && pnpm dev"],
+      "port": 5173
+    }
+  ]
+}

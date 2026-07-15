@@ -1,6 +1,97 @@
 /**
- * Offline sync engine (outbox, delta apply, conflict rules) — implementation begins Phase 1
- * Phase 0 stub — exists so the workspace graph and CI pipelines are real
- * from day one (phase-0-foundations.md §0.1).
+ * @retailos/sync — offline sync engine for POS registers (1B):
+ * device SQLite schema, bootstrap/delta pull, atomic outbox + idempotent
+ * pusher, SyncClient facade. See 03-architecture/offline-sync-strategy.md.
  */
 export const PACKAGE_NAME = '@retailos/sync';
+
+export type { SqlDriver } from './driver.js';
+export { openBetterSqliteDriver } from './better-sqlite3-driver.js';
+export { openSqlJsDriver, type SqlJsDriver, type SqlJsDriverOptions } from './sqljs-driver.js';
+export {
+  openBrowserDriver,
+  type BrowserDriverHandle,
+  type BrowserDriverOptions,
+} from './browser-driver.js';
+export { DEVICE_SCHEMA_VERSION, migrateDeviceDb } from './schema.js';
+export {
+  SyncHttp,
+  SyncHttpError,
+  type ActivateResponse,
+  type BootstrapSnapshot,
+  type Change,
+  type ChangesPage,
+  type DownEntityType,
+  type FactAck,
+  type SyncBatchBody,
+  type SyncHttpOptions,
+} from './http.js';
+export { applyBootstrap, applyChanges, lastAckRev, pullOnce } from './apply.js';
+export {
+  claimBatch,
+  markPushed,
+  pendingCount,
+  pushOnce,
+  pushWithRetry,
+  recordRefund,
+  recordSale,
+  type ClaimedBatch,
+  type LocalDiscount,
+  type LocalRefundInput,
+  type LocalRefundLine,
+  type LocalSaleInput,
+  type LocalSaleLine,
+  type LocalSalePayment,
+  type LocalStockMovement,
+  type LocalTaxLine,
+} from './outbox.js';
+export {
+  discardParkedCart,
+  getParkedCart,
+  listParkedCarts,
+  parkCart,
+  retrieveParkedCart,
+  type ParkCartInput,
+  type ParkedCart,
+  type ParkedCartSummary,
+} from './parked.js';
+export {
+  getOrderDetail,
+  getStoreMeta,
+  listCategories,
+  listRecentOrders,
+  listSellableVariants,
+  listTaxRates,
+  lookupBarcode,
+  searchSellableVariants,
+  taxRatesByCategory,
+  type CategoryRow,
+  type OrderDetail,
+  type OrderLineDetail,
+  type OrderSummary,
+  type PaymentDetail,
+  type RefundDetail,
+  type SellableVariant,
+  type StoreMeta,
+  type TaxRateRow,
+} from './queries.js';
+export {
+  closeShift,
+  getActiveShift,
+  getShiftZSource,
+  openShift,
+  recordCashMovement,
+  type ActiveShift,
+  type CashMovementInput,
+  type CashMovementKind,
+  type CloseShiftInput,
+  type OpenShiftInput,
+  type ShiftZSource,
+} from './shifts.js';
+export {
+  SqliteSecretStore,
+  SyncClient,
+  type SecretStore,
+  type SyncClientOptions,
+  type SyncStatus,
+} from './client.js';

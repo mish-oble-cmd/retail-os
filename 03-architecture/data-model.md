@@ -8,6 +8,7 @@ Core entities, inspired by Shopify's proven object model (see `01-research/shopi
 - Every business table: `store_id` (tenant), `created_at`, `updated_at`; synced tables add `sync_rev` (server-assigned monotonic revision per store, drives delta sync).
 - Money: `*_amount` integer minor units; store has one `currency` (v1 single-currency per store).
 - Soft delete via `status`/`deleted_at` only where noted; sale facts are **immutable — corrections are new rows**.
+- **Intra-tenant FKs are composite** `(store_id, <entity>_id) REFERENCES parent(store_id, id)` (decided 2026-07-10): Postgres referential-integrity checks bypass RLS, so a single-column FK would let one tenant reference another tenant's row. Composite FKs make cross-tenant references impossible at the constraint level; every referenceable table carries a `UNIQUE (store_id, id)` constraint.
 
 ## Entity relationship overview
 
@@ -41,7 +42,7 @@ Store ─┬─ Location ─┬─ Register ─── Shift ─── ShiftEvent
 
 ### Catalog ⬇
 
-- **Product**: name, description, category_id, brand, images[], tax_category_id, status, has_variants, custom JSONB
+- **Product**: name, description, category_id, brand, images[], options JSONB (ordered option definitions, e.g. `[{"name":"Size","values":["S","M","L"]}]` — variants hold the chosen combination in `option_values`; added 2026-07-10 for the FR-2.2 matrix), tax_category_id, status, has_variants, custom JSONB
 - **Variant**: product_id, option_values JSONB, sku, price_amount, compare_at_amount?, cost_amount?, track_stock bool
 - **Barcode**: variant_id, code (unique per store) — multiple per variant
 - **Category**: parent_id (tree), name, sort
@@ -75,6 +76,13 @@ Store ─┬─ Location ─┬─ Register ─── Shift ─── ShiftEvent
 - **SyncClient**: device fingerprint, register_id, last_seen, last_ack_rev | **SyncBatch**: client_id, idempotency_key, payload hash, status | **SyncConflict**: type, entities, resolution, resolved_by
 - **AuditLog**: actor, action, entity ref, before/after JSONB (sensitive actions only)
 
+### Sync plumbing (concrete 1B tables, 2026-07-11)
+
+- **devices** (realizes SyncClient): register_id, token_hash (sha-256 of the `rot_…` device token, shown once at activation), app_version, activated_at, last_seen_at, revoked_at
+- **sync_batches** (realizes SyncBatch): PK (store_id, batch ULID) = the idempotency key; register_id, device_id, fact_count, stored `acks` JSONB replayed verbatim on duplicate delivery
+- **sync_conflicts** (realizes SyncConflict): conflict_type (`total_mismatch`, `stale_reference`, … full matrix Phase 3), entity_type/entity_id, details JSONB, resolved_at/resolved_by
+- **sync_tombstones**: (store_id, entity_type, entity_id) + sync_rev — written by `AFTER DELETE` triggers on ⬇-synced tables so deletions ride the delta feed
+
 ## Invariants (enforce in domain package + DB constraints)
 
 1. `sum(OrderLine totals) + tax == Order.total` — server recomputes on ingest; mismatch → SyncConflict, never silent fix
@@ -95,4 +103,4 @@ Phase 0 clarifications (approved 2026-07-08):
 - **Multi-rate exclusive**: each rate applies independently to the discounted line amount, each rounded half-up.
 - **Multi-rate inclusive**: net = gross / (1 + Σrates); each `tax_i = round_half_up(gross × rate_i_bp / (10000 + Σrate_bp))`. Any residual cent between `gross - net - Σtax_i` stays in net (never invented tax).
 - **Cart-level discounts** are allocated across lines proportionally to line amounts (largest-remainder method so no cent is lost) _before_ tax computes — tax always sees discounted line amounts.
-- **Canonical demo tax setup**: PHP currency, 12% VAT tax-inclusive (Philippines launch market); golden fixtures center on this plus exclusive/multi-rate/zero-rate cases.
+- **Canonical demo tax setup** (updated 2026-07-10 — first client is Singapore): **SGD currency, 9% GST, tax-inclusive**. Currency and rates remain per-store settings (integer basis points, inclusive/exclusive switchable), so any market is configurable without code changes. Golden fixtures center on SGD 9% inclusive; the original PHP 12% inclusive cases stay in the suite alongside exclusive/multi-rate/zero-rate cases.

@@ -34,6 +34,9 @@
   * { box-sizing: border-box; margin: 0; }
   body { background: #DDE1DE; font-family: var(--font-ui); color: var(--color-ink); padding: 24px; }
   .money { font-family: var(--font-money); font-variant-numeric: tabular-nums; text-align: right; }
+  svg.ic { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.75;
+    stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  svg.ic.sm { width: 20px; height: 20px; }
 
   .canvas-label { max-width: 1280px; margin: 32px auto 8px; font-size: 14px; color: #444; }
   .canvas { width: 1280px; height: 800px; margin: 0 auto; background: var(--color-bg);
@@ -137,7 +140,7 @@
   <div class="main">
     <div class="catalog">
       <div class="searchbar">
-        <div class="search-input">⌕ Scan barcode or search products…<span class="kbd">F2</span></div>
+        <div class="search-input"><svg class="ic sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>Scan barcode or search products…<span class="kbd">F2</span></div>
       </div>
       <div class="cats">
         <div class="cat active">All</div>
@@ -234,11 +237,11 @@
     <div class="sync-pill sync-off"><span class="dot"></span>Offline · 3 sales queued</div>
     <div class="staff-chip"><span class="avatar">MR</span>Marites R.</div>
   </div>
-  <div class="offline-banner">⚠ Offline — sales are saved on this device and will sync when the connection returns.</div>
+  <div class="offline-banner"><svg class="ic sm" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>Offline — sales are saved on this device and will sync when the connection returns.</div>
   <div class="main">
     <div class="catalog">
       <div class="searchbar">
-        <div class="search-input">⌕ Scan barcode or search products…<span class="kbd">F2</span></div>
+        <div class="search-input"><svg class="ic sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>Scan barcode or search products…<span class="kbd">F2</span></div>
       </div>
       <div class="cats">
         <div class="cat active">All</div>
@@ -267,7 +270,7 @@
         <button class="park-btn">Parked (2)</button>
       </div>
       <div class="empty-cart">
-        <div class="big">🛒</div>
+        <svg class="ic" style="width:44px;height:44px;stroke-width:1.25" viewBox="0 0 24 24"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
         <div class="title">Cart is empty</div>
         <div class="hint">Scan a barcode, search, or tap a product to start a sale. Offline mode changes nothing here.</div>
       </div>

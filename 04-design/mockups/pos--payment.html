@@ -34,6 +34,9 @@
   * { box-sizing: border-box; margin: 0; }
   body { background: #DDE1DE; font-family: var(--font-ui); color: var(--color-ink); padding: 24px; }
   .money { font-family: var(--font-money); font-variant-numeric: tabular-nums; text-align: right; }
+  svg.ic { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.75;
+    stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  svg.ic.sm { width: 20px; height: 20px; }
 
   .canvas-label { max-width: 1280px; margin: 32px auto 8px; font-size: 14px; color: #444; }
   .canvas { width: 1280px; height: 800px; margin: 0 auto; background: var(--color-bg);
@@ -42,7 +45,8 @@
   .topbar { height: 56px; background: var(--color-surface); border-bottom: 1px solid var(--color-border);
     display: flex; align-items: center; gap: 16px; padding: 0 16px; flex: none; }
   .back { height: 48px; padding: 0 16px; border: 1px solid var(--color-border); border-radius: var(--radius);
-    background: var(--color-surface); font-size: 16px; font-family: var(--font-ui); color: var(--color-ink); }
+    background: var(--color-surface); font-size: 16px; font-family: var(--font-ui); color: var(--color-ink);
+    display: flex; align-items: center; gap: 6px; }
   .crumb { font-size: 18px; font-weight: 600; }
   .crumb small { display: block; font-size: 12px; color: var(--color-ink-muted); font-weight: 400; }
   .sync-pill { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 14px;
@@ -77,7 +81,8 @@
   .split .meta { font-size: 14px; color: var(--color-ink-muted); }
   .split .amt { margin-left: auto; font-size: 18px; font-weight: 500; }
   .split .remove { width: 48px; height: 48px; border: 1px solid var(--color-border); border-radius: var(--radius);
-    background: var(--color-surface); color: var(--color-danger); font-size: 18px; }
+    background: var(--color-surface); color: var(--color-danger);
+    display: flex; align-items: center; justify-content: center; }
   .split .head { background: var(--color-bg); font-size: 14px; color: var(--color-ink-muted); padding: 8px 16px; }
 
   .change-strip { margin-top: auto; background: #E7F3EA; border: 1px solid #BFE0C8; border-radius: var(--radius-card);
@@ -120,7 +125,7 @@
 <p class="canvas-label"><strong>POS-04 Payment — primary state</strong> (cash · ₱2,000 tendered on ₱1,250.00 → change ₱750.00 · pad is interactive)</p>
 <div class="canvas">
   <div class="topbar">
-    <button class="back">← Back to sale</button>
+    <button class="back"><svg class="ic sm" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>Back to sale</button>
     <div class="crumb">Payment<small>Sale R2-000482 · 8 items</small></div>
     <div class="sync-pill sync-ok"><span class="dot"></span>Synced · just now</div>
   </div>
@@ -142,7 +147,7 @@
         <div class="row">
           <span class="who">Cash</span><span class="meta">tendered ₱2,000.00</span>
           <span class="amt money" id="split-cash">₱1,250.00</span>
-          <button class="remove" title="Remove payment">✕</button>
+          <button class="remove" title="Remove payment"><svg class="ic sm" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
         </div>
       </div>
       <div class="change-strip">
@@ -178,7 +183,7 @@
 <p class="canvas-label"><strong>POS-04 Payment — split payment, offline, validation error</strong> (GCash ₱1,000 recorded · card ref rejected · ₱250.00 remaining)</p>
 <div class="canvas">
   <div class="topbar">
-    <button class="back">← Back to sale</button>
+    <button class="back"><svg class="ic sm" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>Back to sale</button>
     <div class="crumb">Payment<small>Sale R2-000483 · 3 items</small></div>
     <div class="sync-pill sync-off"><span class="dot"></span>Offline · 4 sales queued</div>
   </div>
@@ -200,7 +205,7 @@
         <div class="row">
           <span class="who">GCash</span><span class="meta">ref 7031-XXXX · 14:22</span>
           <span class="amt money">₱1,000.00</span>
-          <button class="remove" title="Remove payment">✕</button>
+          <button class="remove" title="Remove payment"><svg class="ic sm" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
         </div>
         <div class="row" style="color: var(--color-ink-muted)">
           <span class="who" style="font-weight:400">Card (manual)</span><span class="meta">entering…</span>

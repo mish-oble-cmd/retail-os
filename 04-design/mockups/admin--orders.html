@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>ADM-11 Orders — RetailOS mockup</title>
+<style>
+  /* ===== Counter design tokens — keep in sync with 04-design/design-system.md ===== */
+  :root {
+    --color-primary: #1A4D2E;
+    --color-primary-hover: #143D24;
+    --color-accent: #F5A623;
+    --color-success: #1E8E3E;
+    --color-warning: #F29900;
+    --color-danger: #D93025;
+    --color-bg: #F7F8F7;
+    --color-surface: #FFFFFF;
+    --color-ink: #1C1F1D;
+    --color-ink-muted: #5C6660;
+    --color-border: #E2E6E3;
+    --radius: 8px;
+    --radius-card: 12px;
+    --shadow-card: 0 1px 3px rgba(28, 31, 29, 0.10);
+    --shadow-overlay: 0 8px 24px rgba(28, 31, 29, 0.18);
+    --font-ui: "Inter", system-ui, -apple-system, sans-serif;
+    --font-money: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  }
+  [data-theme="dark"] {
+    --color-primary: #5CB584; --color-primary-hover: #6FC494; --color-accent: #F5B84D;
+    --color-success: #4CC272; --color-warning: #F5A623; --color-danger: #F0655A;
+    --color-bg: #121513; --color-surface: #1C201D; --color-ink: #E8ECE9;
+    --color-ink-muted: #98A29C; --color-border: #2B302D;
+  }
+
+  * { box-sizing: border-box; margin: 0; }
+  body { background: #DDE1DE; font-family: var(--font-ui); color: var(--color-ink); padding: 24px; font-size: 14px; }
+  .money { font-family: var(--font-money); font-variant-numeric: tabular-nums; text-align: right; }
+  .mono { font-family: var(--font-money); font-variant-numeric: tabular-nums; }
+  svg.ic { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.75;
+    stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  svg.ic.xs { width: 16px; height: 16px; }
+
+  .canvas-label { max-width: 1440px; margin: 32px auto 8px; font-size: 14px; color: #444; }
+  .canvas { width: 1440px; height: 900px; margin: 0 auto; background: var(--color-bg);
+    border-radius: 4px; overflow: hidden; display: flex; box-shadow: var(--shadow-overlay); }
+  .note { max-width: 1440px; margin: 8px auto 0; font-size: 13px; color: #555; }
+
+  /* ===== AppShell (matches ADM-02/03) ===== */
+  .sidebar { width: 224px; flex: none; background: var(--color-surface); border-right: 1px solid var(--color-border);
+    display: flex; flex-direction: column; padding: 16px 12px; gap: 2px; }
+  .brand { font-size: 16px; font-weight: 600; padding: 4px 12px 16px; }
+  .brand small { display: block; font-weight: 400; font-size: 12px; color: var(--color-ink-muted); }
+  .nav { display: flex; flex-direction: column; gap: 2px; }
+  .nav a { display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 12px; border-radius: var(--radius);
+    color: var(--color-ink); text-decoration: none; font-size: 14px; }
+  .nav a.active { background: #EDF4EF; color: var(--color-primary); font-weight: 600; }
+  .nav .icon { width: 20px; display: inline-flex; align-items: center; justify-content: center; color: var(--color-ink-muted); }
+  .nav a.active .icon { color: var(--color-primary); }
+  .sidebar .foot { margin-top: auto; font-size: 12px; color: var(--color-ink-muted); padding: 0 12px; }
+
+  .content { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .topbar { height: 56px; background: var(--color-surface); border-bottom: 1px solid var(--color-border);
+    display: flex; align-items: center; gap: 12px; padding: 0 24px; flex: none; }
+  .page-title { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
+  .count { font-size: 13px; color: var(--color-ink-muted); }
+  .crumb { font-size: 13px; color: var(--color-ink-muted); }
+  .crumb b { color: var(--color-ink); font-weight: 600; font-size: 16px; display: block; letter-spacing: -0.01em; }
+  .topbar .right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .btn { height: 36px; padding: 0 14px; border: 1px solid var(--color-border); border-radius: var(--radius);
+    background: var(--color-surface); font-size: 14px; font-family: var(--font-ui); color: var(--color-ink);
+    display: inline-flex; align-items: center; gap: 8px; }
+  .btn.primary { border: 0; background: var(--color-primary); color: #fff; font-weight: 600; }
+  .btn.danger { border-color: #F3C1BD; color: var(--color-danger); }
+  .avatar { width: 32px; height: 32px; border-radius: 999px; background: var(--color-primary); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; }
+
+  .body { flex: 1; padding: 16px 24px; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+
+  /* Filters */
+  .filters { display: flex; gap: 8px; align-items: center; }
+  .search { width: 320px; height: 36px; border: 1px solid var(--color-border); border-radius: var(--radius);
+    background: var(--color-surface); display: flex; align-items: center; gap: 8px; padding: 0 10px;
+    font-size: 14px; color: var(--color-ink-muted); }
+  .select { height: 36px; display: inline-flex; align-items: center; gap: 8px; padding: 0 12px;
+    border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); font-size: 14px; }
+  .select.on { border-color: var(--color-primary); color: var(--color-primary); font-weight: 500; }
+
+  /* Sync info banner */
+  .syncbar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border: 1px solid #F5DEB5;
+    background: #FDF6E7; border-radius: var(--radius); font-size: 13px; color: #7A5200; }
+
+  /* Table */
+  .tablewrap { flex: 1; background: var(--color-surface); border: 1px solid var(--color-border);
+    border-radius: var(--radius-card); box-shadow: var(--shadow-card); overflow: hidden; display: flex; flex-direction: column; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  thead th { text-align: left; font-weight: 600; color: var(--color-ink-muted); font-size: 12px;
+    letter-spacing: 0.04em; text-transform: uppercase; border-bottom: 1px solid var(--color-border);
+    padding: 10px 12px; background: var(--color-surface); }
+  thead th.num, td.num { text-align: right; }
+  tbody td { padding: 9px 12px; border-bottom: 1px solid var(--color-border); vertical-align: middle; }
+  tbody tr:hover { background: var(--color-bg); }
+  .ordno { font-family: var(--font-money); font-size: 13px; font-weight: 600; }
+  .sub { font-size: 12px; color: var(--color-ink-muted); }
+  .pill { font-size: 12px; font-weight: 500; border-radius: 999px; padding: 2px 10px; white-space: nowrap; }
+  .p-paid { background: #E7F3EA; color: var(--color-success); }
+  .p-part { background: #FDF6E7; color: #9A6200; }
+  .p-refunded { background: var(--color-bg); color: var(--color-ink-muted); border: 1px solid var(--color-border); }
+  .tfoot { margin-top: auto; display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 12px; font-size: 13px; color: var(--color-ink-muted); border-top: 1px solid var(--color-border); }
+
+  /* ===== Detail layout (section 2) ===== */
+  .detail { flex: 1; padding: 16px 24px; display: grid; grid-template-columns: 1fr 360px; gap: 16px;
+    align-content: start; overflow: hidden; }
+  .col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card); padding: 16px 20px; }
+  .card h3 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+  .lines td { padding: 8px; }
+  .lines .nm { font-weight: 500; }
+  .lines .refl { color: var(--color-ink-muted); }
+  .lines .refl .nm { font-weight: 500; text-decoration: line-through; text-decoration-color: var(--color-ink-muted); }
+  .reftag { font-size: 11.5px; font-weight: 600; color: #9A6200; background: #FDF6E7; border-radius: 999px; padding: 1px 8px; margin-left: 6px; }
+  .totals { margin-top: 8px; border-top: 1px solid var(--color-border); padding-top: 10px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+  .totals .row { display: flex; justify-content: space-between; }
+  .totals .row.muted { color: var(--color-ink-muted); font-size: 13px; }
+  .totals .row.grand { font-size: 16px; font-weight: 600; border-top: 1px solid var(--color-border); padding-top: 8px; margin-top: 2px; }
+  .pay { display: flex; justify-content: space-between; padding: 7px 0; font-size: 14px; border-bottom: 1px solid var(--color-border); }
+  .pay:last-child { border-bottom: 0; }
+  .pay .k { color: var(--color-ink-muted); }
+  .pay.neg .k, .pay.neg .money { color: var(--color-danger); }
+
+  /* Timeline rail */
+  .tl { display: flex; flex-direction: column; }
+  .ev { display: flex; gap: 12px; position: relative; padding-bottom: 18px; }
+  .ev:last-child { padding-bottom: 0; }
+  .ev::before { content: ""; position: absolute; left: 5px; top: 14px; bottom: 0; width: 2px; background: var(--color-border); }
+  .ev:last-child::before { display: none; }
+  .ev .dot { width: 12px; height: 12px; border-radius: 999px; background: var(--color-surface);
+    border: 3px solid var(--color-primary); flex: none; margin-top: 3px; z-index: 1; }
+  .ev.warn .dot { border-color: var(--color-warning); }
+  .ev .t { font-size: 13.5px; }
+  .ev .t small { display: block; color: var(--color-ink-muted); font-size: 12px; margin-top: 1px; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     SECTION 1 — Primary state: today's orders across registers
+     Canvas: Admin web 1440×900 (degrades to 1024)
+============================================================ -->
+<p class="canvas-label"><strong>ADM-11 Orders list — primary state</strong> (today · all registers · one register has unsynced orders)</p>
+<div class="canvas">
+  <aside class="sidebar">
+    <div class="brand">Bahay Kubo Grocers<small>RetailOS admin</small></div>
+    <nav class="nav">
+      <a href="#"><span class="icon"><svg class="ic" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>Home</a>
+      <a class="active" href="#"><span class="icon"><svg class="ic" viewBox="0 0 24 24"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M8 7h8"/><path d="M8 11h8"/><path d="M8 15h5"/></svg></span>Orders</a>
+      <a href="#"><span class="icon"><svg class="ic" viewBox="0 0 24 24"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5"/></svg></span>Products</a>
+      <a href="#"><span class="icon"><svg class="ic" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" y1="22" x2="12" y2="12"/></svg></span>Inventory</a>
+      <a href="#"><span class="icon"><svg class="ic" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>Customers</a>
+      <a href="#"><span class="icon"><svg class="ic" viewBox="0 0 24 24"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></span>Reports</a>
+      <a href="#"><span class="icon"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.9 4.9 1.4 1.4"/><path d="m17.7 17.7 1.4 1.4"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.3 17.7-1.4 1.4"/><path d="m19.1 4.9-1.4 1.4"/></svg></span>Settings</a>
+    </nav>
+    <div class="foot">v0.1.0 · all systems normal</div>
+  </aside>
+  <div class="content">
+    <div class="topbar">
+      <div class="page-title">Orders</div>
+      <span class="count">38 today · ₱18,462.00</span>
+      <div class="right">
+        <button class="btn"><svg class="ic xs" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Export</button>
+        <span class="avatar">JD</span>
+      </div>
+    </div>
+    <div class="body">
+      <div class="filters">
+        <div class="search"><svg class="ic xs" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>Order #, customer, or card last 4…</div>
+        <span class="select on">Today ✕</span>
+        <span class="select">Register ▾</span>
+        <span class="select">Tender ▾</span>
+        <span class="select">Status ▾</span>
+      </div>
+      <div class="syncbar">
+        <svg class="ic xs" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Register 2 last synced 10:24 AM — orders rung up there since then will appear after its next sync.
+      </div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr>
+            <th>Order</th><th>Time</th><th>Register</th><th>Staff</th><th>Customer</th><th class="num">Items</th><th>Tender</th><th class="num">Total</th><th>Status</th>
+          </tr></thead>
+          <tbody>
+            <tr><td><span class="ordno">R1-000214</span></td><td>10:41 AM</td><td>Register 1</td><td>Bea S.</td><td class="sub">—</td>
+              <td class="num mono">3</td><td>Cash</td><td class="money">₱472.00</td><td><span class="pill p-paid">Paid</span></td></tr>
+            <tr><td><span class="ordno">R2-000483</span></td><td>10:22 AM</td><td>Register 2</td><td>Marco T.</td><td>Alyssa Uy</td>
+              <td class="num mono">5</td><td>Card ·· 4417</td><td class="money">₱1,238.00</td><td><span class="pill p-paid">Paid</span></td></tr>
+            <tr><td><span class="ordno">R1-000213</span></td><td>9:58 AM</td><td>Register 1</td><td>Bea S.</td><td class="sub">—</td>
+              <td class="num mono">1</td><td>GCash</td><td class="money">₱185.00</td><td><span class="pill p-paid">Paid</span></td></tr>
+            <tr><td><span class="ordno">R2-000482</span></td><td>9:36 AM</td><td>Register 2</td><td>Marco T.</td><td class="sub">—</td>
+              <td class="num mono">6</td><td>Cash</td><td class="money">₱1,250.00</td><td><span class="pill p-part">Partially refunded −₱165.00</span></td></tr>
+            <tr><td><span class="ordno">R1-000212</span></td><td>9:12 AM</td><td>Register 1</td><td>Bea S.</td><td>Ramon Cruz</td>
+              <td class="num mono">2</td><td>Cash + GCash</td><td class="money">₱998.00</td><td><span class="pill p-paid">Paid</span></td></tr>
+            <tr><td><span class="ordno">R1-000211</span></td><td>8:47 AM</td><td>Register 1</td><td>Liza R.</td><td class="sub">—</td>
+              <td class="num mono">1</td><td>Cash</td><td class="money">₱138.00</td><td><span class="pill p-refunded">Refunded</span></td></tr>
+            <tr><td><span class="ordno">R2-000481</span></td><td>8:31 AM</td><td>Register 2</td><td>Marco T.</td><td class="sub">—</td>
+              <td class="num mono">4</td><td>Cash</td><td class="money">₱824.00</td><td><span class="pill p-paid">Paid</span></td></tr>
+            <tr><td><span class="ordno">R1-000210</span></td><td>8:19 AM</td><td>Register 1</td><td>Liza R.</td><td>Nena Villar</td>
+              <td class="num mono">7</td><td>Card ·· 8802</td><td class="money">₱2,143.00</td><td><span class="pill p-paid">Paid</span></td></tr>
+            <tr><td><span class="ordno">R1-000209</span></td><td>8:02 AM</td><td>Register 1</td><td>Liza R.</td><td class="sub">—</td>
+              <td class="num mono">2</td><td>Cash</td><td class="money">₱370.00</td><td><span class="pill p-paid">Paid</span></td></tr>
+          </tbody>
+        </table>
+        <div class="tfoot">
+          <span>Showing 9 of 38 today</span>
+          <span>‹ Prev · <strong>Next ›</strong></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="note">Admin sees the synced ledger, not the registers' local queues — the amber bar states that honestly instead of pretending the list is real-time (sync health details live in ADM-19, Phase 3). Register-prefixed order numbers (conflict rule #6) render mono like every figure; card rows show last 4 so the search hint "card last 4" has something to hit. Refund deltas ride inside the status pill — the Total column keeps the original charge, because the ledger is immutable (NFR-6): corrections are new records, shown in the detail timeline.</p>
+
+<!-- ============================================================
+     SECTION 2 — Order detail: timeline, payments, refund from admin
+============================================================ -->
+<p class="canvas-label"><strong>ADM-11 Order detail</strong> (R2-000482 · partial refund already posted · resend receipt + admin refund entry point)</p>
+<div class="canvas">
+  <aside class="sidebar">
+    <div class="brand">Bahay Kubo Grocers<small>RetailOS admin</small></div>
+    <nav class="nav">
+      <a href="#"><span class="icon"><svg class="ic" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>Home</a>
+      <a class="active" href="#"><span class="icon"><svg class="ic" viewBox="0 0 24 24"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M8 7h8"/><path d="M8 11h8"/><path d="M8 15h5"/></svg></span>Orders</a>
+      <a href="#"><span class="icon"><svg class="ic" viewBox="0 0 24 24"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5"/></svg></span>Products</a>
+      <a href="#"><span class="icon"><svg class="ic" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" y1="22" x2="12" y2="12"/></svg></span>Inventory</a>
+      <a href="#"><span class="icon"><svg class="ic" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>Customers</a>
+      <a href="#"><span class="icon"><svg class="ic" viewBox="0 0 24 24"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></span>Reports</a>
+      <a href="#"><span class="icon"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.9 4.9 1.4 1.4"/><path d="m17.7 17.7 1.4 1.4"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.3 17.7-1.4 1.4"/><path d="m19.1 4.9-1.4 1.4"/></svg></span>Settings</a>
+    </nav>
+    <div class="foot">v0.1.0</div>
+  </aside>
+  <div class="content">
+    <div class="topbar">
+      <div class="crumb">Orders / Today<b class="mono">R2-000482</b></div>
+      <span class="pill p-part">Partially refunded</span>
+      <div class="right">
+        <button class="btn"><svg class="ic xs" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>Resend receipt</button>
+        <button class="btn"><svg class="ic xs" viewBox="0 0 24 24"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3h12v6"/><rect x="6" y="14" width="12" height="8" rx="1"/></svg>Print</button>
+        <span style="width:12px"></span>
+        <button class="btn danger">Refund remaining…</button>
+      </div>
+    </div>
+    <div class="detail">
+      <div class="col">
+        <div class="card">
+          <h3>6 items · Register 2 · Marco T. · today 9:36 AM</h3>
+          <table class="lines">
+            <thead><tr><th>Item</th><th class="num">Qty</th><th class="num">Each</th><th class="num">Line total</th></tr></thead>
+            <tbody>
+              <tr><td class="nm">Dried Mangoes 200g</td><td class="num mono">2</td><td class="money">₱185.00</td><td class="money">₱370.00</td></tr>
+              <tr class="refl"><td><span class="nm">Ube Halaya Jar 340g</span><span class="reftag">Refunded · restocked</span></td><td class="num mono">1</td><td class="money">₱165.00</td><td class="money">₱165.00</td></tr>
+              <tr><td class="nm">Tablea Cacao 400g</td><td class="num mono">1</td><td class="money">₱398.00</td><td class="money">₱398.00</td></tr>
+              <tr><td class="nm">Polvoron Assorted 12s</td><td class="num mono">1</td><td class="money">₱138.00</td><td class="money">₱138.00</td></tr>
+              <tr><td class="nm">Cashew Brittle 150g</td><td class="num mono">1</td><td class="money">₱125.00</td><td class="money">₱125.00</td></tr>
+              <tr><td class="nm">Buko Pandan Mix 3s</td><td class="num mono">1</td><td class="money">₱54.00</td><td class="money">₱54.00</td></tr>
+            </tbody>
+          </table>
+          <div class="totals">
+            <div class="row"><span>Subtotal</span><span class="money">₱1,250.00</span></div>
+            <div class="row muted"><span>VAT 12% (included)</span><span class="money">₱133.93</span></div>
+            <div class="row grand"><span>Total charged</span><span class="money">₱1,250.00</span></div>
+            <div class="row" style="color:var(--color-danger)"><span>Refunded 10:05 AM</span><span class="money">−₱165.00</span></div>
+            <div class="row muted"><span>Net</span><span class="money">₱1,085.00</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Payments</h3>
+          <div class="pay"><span class="k">Cash tendered</span><span class="money mono">₱1,500.00</span></div>
+          <div class="pay"><span class="k">Change given</span><span class="money mono">₱250.00</span></div>
+          <div class="pay neg"><span class="k">Refund — cash, Register 2 drawer</span><span class="money mono">−₱165.00</span></div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card">
+          <h3>Timeline</h3>
+          <div class="tl">
+            <div class="ev"><span class="dot"></span><div class="t">Sale completed at Register 2<small>Today 9:36 AM · Marco T.</small></div></div>
+            <div class="ev"><span class="dot"></span><div class="t">Receipt printed<small>Today 9:36 AM</small></div></div>
+            <div class="ev"><span class="dot"></span><div class="t">Synced from Register 2<small>Today 9:41 AM · batch 0292</small></div></div>
+            <div class="ev warn"><span class="dot"></span><div class="t">₱165.00 refunded — Ube Halaya Jar 340g, restocked<small>Today 10:05 AM · Marco T. · approved by J. Dela Cruz (Owner PIN)</small></div></div>
+            <div class="ev"><span class="dot"></span><div class="t">Refund receipt printed<small>Today 10:06 AM</small></div></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Customer</h3>
+          <div style="font-size:13.5px; color:var(--color-ink-muted); line-height:1.5">No customer attached. Attaching after the sale keeps the order in their history and enables an emailed receipt.</div>
+          <div style="margin-top:10px"><button class="btn">Attach customer…</button></div>
+        </div>
+        <div class="card">
+          <h3>Receipt</h3>
+          <div style="font-size:13.5px; line-height:1.6">Printed at register · web receipt live<br/><span class="mono" style="font-size:12.5px; color:var(--color-ink-muted)">retailos.ph/r/01J9ZK3V…</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="note">The timeline is a rail because an order's life genuinely is a sequence — sale, print, sync (with batch number, which support will ask for), refund with the full accountability chain: who rang it, who approved it (FR-5.2 Owner PIN escalation), what was restocked. Admin refund ("Refund remaining…") is danger-styled and separated from the safe pair per the review checklist. Totals never rewrite history: the charge stands, the refund posts beneath it, net is arithmetic (NFR-6). Resend covers email and reprint covers paper — the two receipt questions a shopkeeper actually gets.</p>
+
+</body>
+</html>

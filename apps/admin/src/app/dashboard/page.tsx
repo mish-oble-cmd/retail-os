@@ -1,77 +1,177 @@
 'use client';
 
-import { Badge, Button, Card } from '@retailos/ui';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { api, type MeResource } from '../../lib/api';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { AppShell } from '../../components/app-shell';
+import { onboardingApi, type OnboardingStatus } from '../../lib/onboarding-api';
 
-const NAV = ['Home', 'Orders', 'Products', 'Inventory', 'Customers', 'Reports', 'Settings'];
-
-export default function DashboardPage() {
-  const router = useRouter();
-  const [me, setMe] = useState<MeResource | null>(null);
-
-  useEffect(() => {
-    api
-      .get<MeResource>('/api/v1/auth/me')
-      .then(setMe)
-      .catch(() => router.replace('/login'));
-  }, [router]);
-
-  async function logout() {
-    await api.post('/api/v1/auth/logout').catch(() => undefined);
-    router.replace('/login');
-  }
-
-  if (!me) {
-    return (
-      <main className="flex min-h-screen items-center justify-center text-ink-muted">Loading…</main>
-    );
-  }
+/**
+ * Home (ADM-01, 1E): the first-sale checklist over an empty-state dashboard.
+ * The checklist headline counts down time, not tasks — the same <15-minute
+ * promise FR-10.1 makes, kept visibly. Polls onboarding status so steps flip as
+ * the register activates and rings a sale. The live dashboard (StatCards +
+ * charts) is ADM-02, a later phase; day zero shows an intentional empty state.
+ */
+export default function HomePage() {
+  const status = useQuery({
+    queryKey: ['onboarding-status'],
+    queryFn: onboardingApi.getStatus,
+    refetchInterval: 5000,
+  });
 
   return (
-    <div className="flex min-h-screen">
-      <aside className="flex w-56 flex-none flex-col border-r border-border bg-surface p-3">
-        <div className="px-3 pb-4 pt-1">
-          <p className="text-body font-semibold text-ink">{me.name}</p>
-          <p className="text-caption text-ink-muted">RetailOS admin</p>
-        </div>
-        <nav className="flex flex-col gap-0.5">
-          {NAV.map((item) => (
-            <span
-              key={item}
-              className={
-                item === 'Home'
-                  ? 'rounded bg-bg px-3 py-2 text-body-sm font-semibold text-primary'
-                  : 'rounded px-3 py-2 text-body-sm text-ink-muted'
-              }
-            >
-              {item}
-            </span>
-          ))}
-        </nav>
-        <div className="mt-auto px-3">
-          <Button variant="ghost" size="sm" onClick={logout}>
-            Sign out
-          </Button>
-        </div>
-      </aside>
-      <main className="flex-1 p-6">
-        <header className="mb-6 flex items-center justify-between">
-          <h1 className="text-h2 font-semibold text-ink">Home</h1>
-          <Badge tone="success">Signed in as {me.role}</Badge>
-        </header>
-        <Card className="mx-auto mt-16 max-w-lg text-center">
-          <div className="py-8">
-            <p className="text-h1">🌱</p>
-            <h2 className="mt-2 text-h3 font-semibold text-ink">Welcome to your store</h2>
-            <p className="mx-auto mt-2 max-w-sm text-body-sm text-ink-muted">
-              The empty admin shell is Phase 0’s finish line. Products, orders, and the real
-              dashboard arrive in Phase 1.
-            </p>
-          </div>
-        </Card>
-      </main>
+    <AppShell title="Home">
+      <div className="mx-auto flex max-w-3xl flex-col gap-4">
+        {status.data && !status.data.dismissed && !allDone(status.data) ? (
+          <Checklist status={status.data} />
+        ) : null}
+        <EmptyDashboard currency={status.data?.currency ?? ''} />
+      </div>
+    </AppShell>
+  );
+}
+
+function allDone(s: OnboardingStatus): boolean {
+  return Object.values(s.steps).every(Boolean);
+}
+
+function doneCount(s: OnboardingStatus): number {
+  return Object.values(s.steps).filter(Boolean).length;
+}
+
+function Checklist({ status }: { status: OnboardingStatus }) {
+  const queryClient = useQueryClient();
+  const dismiss = useMutation({
+    mutationFn: onboardingApi.dismiss,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['onboarding-status'] }),
+  });
+
+  const done = doneCount(status);
+  const s = status.steps;
+
+  return (
+    <div className="rounded-card border border-border bg-surface p-5">
+      <div className="mb-1 flex items-center gap-3">
+        <h3 className="text-body font-semibold text-ink">
+          {status.minutes_remaining > 0
+            ? `First sale in about ${status.minutes_remaining} more minutes`
+            : 'Setup complete'}
+        </h3>
+        <span className="text-body-sm text-ink-muted">{done} of 5 done</span>
+        <button
+          type="button"
+          onClick={() => dismiss.mutate()}
+          className="ml-auto text-body-sm text-ink-muted hover:text-ink"
+        >
+          I&apos;ve done this before — hide
+        </button>
+      </div>
+      <div className="mb-4 h-1.5 overflow-hidden rounded-full bg-bg">
+        <div className="h-full rounded-full bg-primary" style={{ width: `${(done / 5) * 100}%` }} />
+      </div>
+
+      <ul>
+        <Item done={s.account} label="Create your account" />
+        <Item done={s.store_profile} label={`Set up ${status.store_name || 'your store'}`} />
+        <Item
+          done={s.catalog}
+          label="Load a starting catalog"
+          detail={s.catalog ? undefined : 'Add products, import a CSV, or load the sample catalog from setup.'}
+        />
+        <Item
+          done={s.register}
+          label="Connect a register"
+          detail={
+            s.register || !status.activation_code ? undefined : (
+              <span>
+                Open the POS app on your till and enter code{' '}
+                <span className="font-money font-semibold text-ink">{status.activation_code}</span>
+                {status.activation_expires_at ? (
+                  <span className="text-ink-muted"> · expires {expiryHint(status.activation_expires_at)}</span>
+                ) : null}
+              </span>
+            )
+          }
+        />
+        <Item
+          done={s.first_sale}
+          label="Ring up your first sale"
+          blocked={!s.first_sale ? status.blocked.first_sale : undefined}
+          detail={
+            s.first_sale || status.blocked.first_sale
+              ? undefined
+              : 'Anything, cash is fine — it appears here the moment the register syncs.'
+          }
+        />
+      </ul>
     </div>
   );
+}
+
+function Item({
+  done,
+  label,
+  detail,
+  blocked,
+}: {
+  done: boolean;
+  label: string;
+  detail?: React.ReactNode;
+  blocked?: string;
+}) {
+  return (
+    <li className="flex items-start gap-3 border-b border-border py-3 last:border-b-0">
+      <span
+        className={
+          'mt-0.5 flex h-5 w-5 flex-none items-center justify-center rounded-full border text-caption ' +
+          (done ? 'border-primary bg-primary text-white' : 'border-border text-ink-muted')
+        }
+      >
+        {done ? '✓' : ''}
+      </span>
+      <div className={'min-w-0 ' + (blocked ? 'opacity-60' : '')}>
+        <p className={'text-body-sm ' + (done ? 'text-ink-muted line-through' : 'font-medium text-ink')}>
+          {label}
+        </p>
+        {blocked ? <p className="mt-0.5 text-caption text-ink-muted">{blocked}</p> : null}
+        {detail ? <p className="mt-0.5 text-caption text-ink-muted">{detail}</p> : null}
+      </div>
+    </li>
+  );
+}
+
+function EmptyDashboard({ currency }: { currency: string }) {
+  const cur = currency || '—';
+  return (
+    <>
+      <div className="grid grid-cols-3 gap-4">
+        <Stat label="Revenue today" value={`${cur} —`} />
+        <Stat label="Transactions" value="—" />
+        <Stat label="Average basket" value={`${cur} —`} />
+      </div>
+      <div className="rounded-card border border-border bg-surface p-8 text-center">
+        <p className="text-body font-semibold text-ink">Your first sale lights this up</p>
+        <p className="mt-1 text-body-sm text-ink-muted">
+          Sales by hour and top items appear once a register rings one up.
+        </p>
+      </div>
+    </>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-card border border-border bg-surface p-4">
+      <p className="text-caption uppercase tracking-wide text-ink-muted">{label}</p>
+      <p className="mt-1 font-money text-h3 text-ink">{value}</p>
+    </div>
+  );
+}
+
+function expiryHint(iso: string): string {
+  const ms = new Date(iso).getTime() - Date.now();
+  if (Number.isNaN(ms) || ms <= 0) return 'soon';
+  const hours = Math.round(ms / (60 * 60 * 1000));
+  if (hours >= 1) return `in ${hours} h`;
+  const mins = Math.max(1, Math.round(ms / (60 * 1000)));
+  return `in ${mins} min`;
 }
